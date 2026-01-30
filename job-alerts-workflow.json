@@ -1,0 +1,895 @@
+{
+  "name": "DevOps Entry-Level Job Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "trigger-cron",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize job collection and configuration\nconst config = {\n  keywords: [\n    'devops', 'cloud engineer', 'platform engineer', 'kubernetes',\n    'mlops', 'aiops', 'llmops', 'cloud infrastructure', 'ml infrastructure',\n    'ai platform', 'cloud platform', 'site reliability', 'sre'\n  ],\n  \n  positiveSignals: [\n    'kubernetes', 'k8s', 'docker', 'aws', 'gcp', 'azure', 'terraform',\n    'ansible', 'ci/cd', 'jenkins', 'gitlab', 'github actions', 'argocd',\n    'gitops', 'helm', 'linux', 'cloud native', 'infrastructure as code',\n    'iac', 'prometheus', 'grafana', 'datadog', 'cloudformation', 'pulumi',\n    'kubeflow', 'mlflow', 'sagemaker', 'vertex ai', 'ray', 'airflow'\n  ],\n  \n  juniorIndicators: [\n    'junior', 'entry level', 'entry-level', 'associate', 'graduate',\n    'trainee', 'intern', 'internship', 'new grad', 'early career',\n    '0-1 year', '0-2 year', '1-2 year', '1-3 year', '2 year',\n    '0–1 year', '0–2 year', '1–2 year', '1–3 year',\n    'fresher', 'beginner', 'no experience required'\n  ],\n  \n  seniorExclusions: [\n    'senior', 'staff', 'principal', 'lead', 'manager', 'architect',\n    'director', 'head of', 'vp ', 'vice president', 'chief'\n  ],\n  \n  experienceExclusions: [\n    '4+ year', '5+ year', '6+ year', '7+ year', '8+ year', '10+ year',\n    '4\\\\+ year', '5\\\\+ year', 'extensive experience', 'significant experience',\n    'senior-level', 'senior level', 'seasoned professional'\n  ],\n  \n  excludedLocations: [\n    'pakistan', 'bangladesh', 'sri lanka', 'syria'\n  ],\n  \n  excludedRoles: [\n    'sales', 'marketing', 'hr ', 'human resource', 'recruiter',\n    'customer success', 'account manager', 'business development'\n  ]\n};\n\n// Store config for downstream nodes\n$input.item.json.config = config;\n$input.item.json.sources = [];\n$input.item.json.timestamp = new Date().toISOString();\n\nreturn $input.item;"
+      },
+      "id": "init-config",
+      "name": "Initialize Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Generate random wait time between 10-40 seconds\nconst minWait = 10000;\nconst maxWait = 40000;\nconst waitTime = Math.floor(Math.random() * (maxWait - minWait + 1)) + minWait;\n\n$input.item.json.waitTime = waitTime;\nreturn $input.item;"
+      },
+      "id": "random-wait-calc",
+      "name": "Calculate Random Wait",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.waitTime }}",
+        "unit": "milliseconds"
+      },
+      "id": "wait-initial",
+      "name": "Initial Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-hashicorp",
+      "name": "Greenhouse - HashiCorp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/gitlab/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-gitlab",
+      "name": "Greenhouse - GitLab",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-cloudflare",
+      "name": "Greenhouse - Cloudflare",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/datadog/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-datadog",
+      "name": "Greenhouse - Datadog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.lever.co/v0/postings/twilio?mode=json",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+            }
+          ]
+        }
+      },
+      "id": "lever-twilio",
+      "name": "Lever - Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.lever.co/v0/postings/figma?mode=json",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+            }
+          ]
+        }
+      },
+      "id": "lever-figma",
+      "name": "Lever - Figma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.lever.co/v0/postings/netflix?mode=json",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+            }
+          ]
+        }
+      },
+      "id": "lever-netflix",
+      "name": "Lever - Netflix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://remoteok.com/api?tag=devops",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "remoteok-devops",
+      "name": "RemoteOK - DevOps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://remoteok.com/api?tag=cloud",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "remoteok-cloud",
+      "name": "RemoteOK - Cloud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://remoteok.com/api?tag=sre",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "remoteok-sre",
+      "name": "RemoteOK - SRE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/mongodb/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-mongodb",
+      "name": "Greenhouse - MongoDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/elastic/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-elastic",
+      "name": "Greenhouse - Elastic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://boards-api.greenhouse.io/v1/boards/cockroachlabs/jobs",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "id": "greenhouse-cockroach",
+      "name": "Greenhouse - CockroachDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and normalize jobs from all sources\nconst allJobs = [];\nconst errors = [];\n\n// Helper function to normalize job data\nfunction normalizeJob(job, source, company) {\n  return {\n    job_title: (job.title || job.position || job.name || '').trim(),\n    company: (company || job.company || job.company_name || '').trim(),\n    location: (job.location?.name || job.location || job.categories?.location || 'Remote').trim(),\n    job_url: job.absolute_url || job.hostedUrl || job.url || job.apply_url || '',\n    source: source,\n    description: (job.content || job.description || job.descriptionPlain || '').toLowerCase(),\n    posted_at: job.updated_at || job.createdAt || job.date || new Date().toISOString()\n  };\n}\n\n// Process each input item (from different sources)\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  try {\n    // Greenhouse format\n    if (data.jobs && Array.isArray(data.jobs)) {\n      const company = data.name || 'Unknown';\n      for (const job of data.jobs) {\n        allJobs.push(normalizeJob(job, 'Greenhouse', company));\n      }\n    }\n    // Lever format (array of jobs)\n    else if (Array.isArray(data) && data.length > 0 && data[0].hostedUrl) {\n      for (const job of data) {\n        const company = job.categories?.team || 'Unknown';\n        allJobs.push(normalizeJob(job, 'Lever', company));\n      }\n    }\n    // RemoteOK format (array with first item being metadata)\n    else if (Array.isArray(data) && data.length > 1) {\n      for (let i = 1; i < data.length; i++) {\n        const job = data[i];\n        if (job.position && job.company) {\n          allJobs.push({\n            job_title: (job.position || '').trim(),\n            company: (job.company || '').trim(),\n            location: (job.location || 'Remote').trim(),\n            job_url: job.url || `https://remoteok.com/jobs/${job.id}`,\n            source: 'RemoteOK',\n            description: (job.description || '').toLowerCase(),\n            posted_at: job.date || new Date().toISOString()\n          });\n        }\n      }\n    }\n  } catch (err) {\n    errors.push({ source: 'parsing', error: err.message });\n  }\n}\n\nreturn [{ json: { jobs: allJobs, errors: errors, totalRaw: allJobs.length } }];"
+      },
+      "id": "normalize-jobs",
+      "name": "Normalize All Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter jobs based on title, seniority, and relevance\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\n\nconst config = {\n  keywords: [\n    'devops', 'cloud engineer', 'platform engineer', 'kubernetes',\n    'mlops', 'aiops', 'llmops', 'cloud infrastructure', 'ml infrastructure',\n    'ai platform', 'cloud platform', 'site reliability', 'sre', 'infrastructure'\n  ],\n  \n  positiveSignals: [\n    'kubernetes', 'k8s', 'docker', 'aws', 'gcp', 'azure', 'terraform',\n    'ansible', 'ci/cd', 'cicd', 'jenkins', 'gitlab', 'github actions', 'argocd',\n    'gitops', 'helm', 'linux', 'cloud native', 'infrastructure as code',\n    'iac', 'prometheus', 'grafana', 'datadog', 'cloudformation', 'pulumi',\n    'kubeflow', 'mlflow', 'sagemaker', 'vertex ai', 'ray', 'airflow'\n  ],\n  \n  juniorIndicators: [\n    'junior', 'entry level', 'entry-level', 'associate', 'graduate',\n    'trainee', 'intern', 'internship', 'new grad', 'early career',\n    '0-1 year', '0-2 year', '1-2 year', '1-3 year', '2 year',\n    '0–1 year', '0–2 year', '1–2 year', '1–3 year', '2-3 year',\n    'fresher', 'beginner', 'no experience required', 'recent graduate'\n  ],\n  \n  seniorExclusions: [\n    'senior', 'staff', 'principal', 'lead', 'manager', 'architect',\n    'director', 'head of', 'vp ', 'vice president', 'chief', 'sr.', 'sr '\n  ],\n  \n  experienceExclusions: [\n    '4+ year', '5+ year', '6+ year', '7+ year', '8+ year', '10+ year',\n    '4\\\\+ year', '5\\\\+ year', 'extensive experience', 'significant experience',\n    'senior-level', 'senior level', 'seasoned professional', '5 years',\n    '6 years', '7 years', '8 years', '10 years'\n  ],\n  \n  excludedLocations: [\n    'pakistan', 'bangladesh', 'sri lanka', 'syria'\n  ],\n  \n  excludedRoles: [\n    'sales', 'marketing', 'hr ', 'human resource', 'recruiter',\n    'customer success', 'account manager', 'business development',\n    'product manager', 'project manager', 'scrum master'\n  ]\n};\n\nfunction isRelevantRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = job.description || '';\n  \n  // Check if title contains any relevant keywords\n  const hasRelevantTitle = config.keywords.some(kw => titleLower.includes(kw));\n  \n  // Check if description has positive signals\n  const positiveSignalCount = config.positiveSignals.filter(sig => \n    titleLower.includes(sig) || descLower.includes(sig)\n  ).length;\n  \n  return hasRelevantTitle || positiveSignalCount >= 2;\n}\n\nfunction isJuniorLevel(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = job.description || '';\n  const combined = titleLower + ' ' + descLower;\n  \n  // Check for explicit junior indicators in title\n  const hasJuniorTitle = config.juniorIndicators.some(ind => titleLower.includes(ind));\n  \n  // Check for junior indicators in description\n  const hasJuniorDesc = config.juniorIndicators.some(ind => descLower.includes(ind));\n  \n  // Check for senior exclusions in title (strict)\n  const hasSeniorTitle = config.seniorExclusions.some(exc => titleLower.includes(exc));\n  \n  // Check for high experience requirements in description\n  const hasHighExp = config.experienceExclusions.some(exc => descLower.includes(exc));\n  \n  // If title explicitly says junior/entry level, include it\n  if (hasJuniorTitle) return true;\n  \n  // If title says senior/lead/etc, exclude it\n  if (hasSeniorTitle) return false;\n  \n  // If description mentions high experience, exclude\n  if (hasHighExp) return false;\n  \n  // If description mentions junior/early career, include\n  if (hasJuniorDesc) return true;\n  \n  // For roles without explicit seniority, include if no senior indicators\n  // This captures \"DevOps Engineer\" roles that don't specify level\n  return !hasSeniorTitle && !hasHighExp;\n}\n\nfunction isValidLocation(job) {\n  const locationLower = (job.location || '').toLowerCase();\n  return !config.excludedLocations.some(loc => locationLower.includes(loc));\n}\n\nfunction isNotExcludedRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  return !config.excludedRoles.some(role => titleLower.includes(role));\n}\n\n// Apply all filters\nconst filteredJobs = jobs.filter(job => {\n  if (!job.job_title || !job.job_url) return false;\n  if (!isRelevantRole(job)) return false;\n  if (!isJuniorLevel(job)) return false;\n  if (!isValidLocation(job)) return false;\n  if (!isNotExcludedRole(job)) return false;\n  return true;\n});\n\nreturn [{ json: { \n  jobs: filteredJobs, \n  totalRaw: input.totalRaw,\n  totalFiltered: filteredJobs.length,\n  errors: input.errors \n} }];"
+      },
+      "id": "filter-jobs",
+      "name": "Filter Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deduplicate jobs using static data storage\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize hash storage if not exists\nif (!staticData.seenJobHashes) {\n  staticData.seenJobHashes = {};\n}\n\n// Clean up old hashes (older than 30 days)\nconst thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);\nfor (const hash in staticData.seenJobHashes) {\n  if (staticData.seenJobHashes[hash] < thirtyDaysAgo) {\n    delete staticData.seenJobHashes[hash];\n  }\n}\n\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst newJobs = [];\n\n// Simple hash function\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return hash.toString(16);\n}\n\nfor (const job of jobs) {\n  // Create unique identifier from title + company + location\n  const identifier = [\n    job.job_title.toLowerCase().trim(),\n    job.company.toLowerCase().trim(),\n    job.location.toLowerCase().trim()\n  ].join('|');\n  \n  const hash = simpleHash(identifier);\n  \n  // Check if we've seen this job before\n  if (!staticData.seenJobHashes[hash]) {\n    staticData.seenJobHashes[hash] = Date.now();\n    newJobs.push(job);\n  }\n}\n\nreturn [{ json: { \n  jobs: newJobs, \n  totalRaw: input.totalRaw,\n  totalFiltered: input.totalFiltered,\n  totalNew: newJobs.length,\n  errors: input.errors\n} }];"
+      },
+      "id": "deduplicate-jobs",
+      "name": "Deduplicate Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-new-jobs",
+              "leftValue": "={{ $json.totalNew }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-jobs",
+      "name": "Has New Jobs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format jobs into Telegram messages with proper batching\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst messages = [];\nconst MAX_MESSAGE_LENGTH = 3500; // Leave buffer for formatting\n\nfunction formatJob(job) {\n  const lines = [\n    `*${escapeMarkdown(job.job_title)}*`,\n    `Company: ${escapeMarkdown(job.company)}`,\n    `Location: ${escapeMarkdown(job.location)}`,\n    `Source: ${escapeMarkdown(job.source)}`,\n    `[Apply Here](${job.job_url})`,\n    '---'\n  ];\n  return lines.join('\\n');\n}\n\nfunction escapeMarkdown(text) {\n  if (!text) return '';\n  return text\n    .replace(/\\_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/\\~/g, '\\\\~')\n    .replace(/\\`/g, '\\\\`')\n    .replace(/\\>/g, '\\\\>')\n    .replace(/\\#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/\\-/g, '\\\\-')\n    .replace(/\\=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/\\{/g, '\\\\{')\n    .replace(/\\}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/\\!/g, '\\\\!');\n}\n\nlet currentMessage = `*New Job Alerts* \\\\(${jobs.length} found\\\\)\\n\\n`;\nlet jobsInCurrentMessage = 0;\n\nfor (const job of jobs) {\n  const formattedJob = formatJob(job);\n  \n  // Check if adding this job would exceed the limit\n  if (currentMessage.length + formattedJob.length > MAX_MESSAGE_LENGTH || jobsInCurrentMessage >= 7) {\n    // Save current message and start new one\n    messages.push({ text: currentMessage.trim() });\n    currentMessage = `*Job Alerts \\\\(continued\\\\)*\\n\\n`;\n    jobsInCurrentMessage = 0;\n  }\n  \n  currentMessage += formattedJob + '\\n';\n  jobsInCurrentMessage++;\n}\n\n// Add the last message if it has content\nif (jobsInCurrentMessage > 0) {\n  messages.push({ text: currentMessage.trim() });\n}\n\n// Add summary message\nconst summary = [\n  `\\n*Summary*`,\n  `Total scraped: ${input.totalRaw || 0}`,\n  `After filtering: ${input.totalFiltered || 0}`,\n  `New jobs: ${input.totalNew || 0}`,\n  `Timestamp: ${new Date().toISOString()}`\n].join('\\n');\n\nif (messages.length > 0) {\n  messages[messages.length - 1].text += '\\n' + escapeMarkdown(summary);\n}\n\nreturn messages.map(msg => ({ json: msg }));"
+      },
+      "id": "format-telegram-messages",
+      "name": "Format Telegram Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 200]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2860, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "wait-between-messages",
+      "name": "Wait Between Messages",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3080, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log execution summary (no new jobs case)\nconst input = $input.first().json;\n\nconsole.log('Job Alert Workflow Summary:');\nconsole.log(`- Total jobs scraped: ${input.totalRaw || 0}`);\nconsole.log(`- After filtering: ${input.totalFiltered || 0}`);\nconsole.log(`- New jobs found: ${input.totalNew || 0}`);\nconsole.log('- No new jobs to send');\n\nif (input.errors && input.errors.length > 0) {\n  console.log('Errors encountered:');\n  input.errors.forEach(err => console.log(`  - ${JSON.stringify(err)}`));\n}\n\nreturn [{ json: { status: 'completed', newJobs: 0 } }];"
+      },
+      "id": "log-no-jobs",
+      "name": "Log No New Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final logging\nconsole.log('Telegram messages sent successfully');\nreturn $input.all();"
+      },
+      "id": "final-log",
+      "name": "Final Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 200]
+    }
+  ],
+  "connections": {
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Config": {
+      "main": [
+        [
+          {
+            "node": "Calculate Random Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Random Wait": {
+      "main": [
+        [
+          {
+            "node": "Initial Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initial Wait": {
+      "main": [
+        [
+          {
+            "node": "Greenhouse - HashiCorp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - GitLab",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - Cloudflare",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - Datadog",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lever - Twilio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lever - Figma",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lever - Netflix",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RemoteOK - DevOps",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RemoteOK - Cloud",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RemoteOK - SRE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - MongoDB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - Elastic",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - CockroachDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - HashiCorp": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - GitLab": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - Cloudflare": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - Datadog": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lever - Twilio": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lever - Figma": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lever - Netflix": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK - DevOps": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK - Cloud": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK - SRE": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - MongoDB": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - Elastic": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - CockroachDB": {
+      "main": [
+        [
+          {
+            "node": "Normalize All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize All Jobs": {
+      "main": [
+        [
+          {
+            "node": "Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Jobs": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Jobs": {
+      "main": [
+        [
+          {
+            "node": "Has New Jobs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Jobs?": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Messages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No New Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Messages": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Telegram": {
+      "main": [
+        [
+          {
+            "node": "Wait Between Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Between Messages": {
+      "main": [
+        [
+          {
+            "node": "Final Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "errorWorkflow": "",
+    "timezone": "UTC"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "job-alerts"
+    },
+    {
+      "name": "devops"
+    },
+    {
+      "name": "automation"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}
