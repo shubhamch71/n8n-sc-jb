@@ -1,5 +1,5 @@
 {
-  "name": "DevOps Entry-Level Job Alerts",
+  "name": "DevOps Entry-Level Job Alerts (Dynamic)",
   "nodes": [
     {
       "parameters": {
@@ -16,44 +16,192 @@
       "name": "Hourly Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 300]
+      "position": [0, 400]
     },
     {
       "parameters": {
-        "jsCode": "// Initialize job collection and configuration\nconst config = {\n  keywords: [\n    'devops', 'cloud engineer', 'platform engineer', 'kubernetes',\n    'mlops', 'aiops', 'llmops', 'cloud infrastructure', 'ml infrastructure',\n    'ai platform', 'cloud platform', 'site reliability', 'sre'\n  ],\n  \n  positiveSignals: [\n    'kubernetes', 'k8s', 'docker', 'aws', 'gcp', 'azure', 'terraform',\n    'ansible', 'ci/cd', 'jenkins', 'gitlab', 'github actions', 'argocd',\n    'gitops', 'helm', 'linux', 'cloud native', 'infrastructure as code',\n    'iac', 'prometheus', 'grafana', 'datadog', 'cloudformation', 'pulumi',\n    'kubeflow', 'mlflow', 'sagemaker', 'vertex ai', 'ray', 'airflow'\n  ],\n  \n  juniorIndicators: [\n    'junior', 'entry level', 'entry-level', 'associate', 'graduate',\n    'trainee', 'intern', 'internship', 'new grad', 'early career',\n    '0-1 year', '0-2 year', '1-2 year', '1-3 year', '2 year',\n    '0–1 year', '0–2 year', '1–2 year', '1–3 year',\n    'fresher', 'beginner', 'no experience required'\n  ],\n  \n  seniorExclusions: [\n    'senior', 'staff', 'principal', 'lead', 'manager', 'architect',\n    'director', 'head of', 'vp ', 'vice president', 'chief'\n  ],\n  \n  experienceExclusions: [\n    '4+ year', '5+ year', '6+ year', '7+ year', '8+ year', '10+ year',\n    '4\\\\+ year', '5\\\\+ year', 'extensive experience', 'significant experience',\n    'senior-level', 'senior level', 'seasoned professional'\n  ],\n  \n  excludedLocations: [\n    'pakistan', 'bangladesh', 'sri lanka', 'syria'\n  ],\n  \n  excludedRoles: [\n    'sales', 'marketing', 'hr ', 'human resource', 'recruiter',\n    'customer success', 'account manager', 'business development'\n  ]\n};\n\n// Store config for downstream nodes\n$input.item.json.config = config;\n$input.item.json.sources = [];\n$input.item.json.timestamp = new Date().toISOString();\n\nreturn $input.item;"
+        "jsCode": "// =============================================================================\n// SOURCE CONFIGURATION - EDIT THIS SECTION TO ADD/REMOVE SOURCES\n// =============================================================================\n// Each source entry follows this schema:\n// {\n//   ats: 'greenhouse' | 'lever' | 'ashby' | 'smartrecruiters' | 'workday' | 'remoteok' | 'workable',\n//   board: 'company-slug',      // The identifier used in the ATS URL\n//   company: 'Display Name',    // Human-readable company name\n//   enabled: true | false       // Optional: disable without removing\n// }\n//\n// To add a new source: simply add a new object to the sources array below\n// To disable a source: set enabled: false\n// To remove a source: delete the object from the array\n// =============================================================================\n\nconst staticData = $getWorkflowStaticData('global');\n\n// Check if sources are already configured in static data\nif (!staticData.sources || staticData.sources.length === 0) {\n  // Default source configuration - modify this list as needed\n  staticData.sources = [\n    // ===== GREENHOUSE COMPANIES =====\n    { ats: 'greenhouse', board: 'hashicorp', company: 'HashiCorp', enabled: true },\n    { ats: 'greenhouse', board: 'gitlab', company: 'GitLab', enabled: true },\n    { ats: 'greenhouse', board: 'cloudflare', company: 'Cloudflare', enabled: true },\n    { ats: 'greenhouse', board: 'datadog', company: 'Datadog', enabled: true },\n    { ats: 'greenhouse', board: 'mongodb', company: 'MongoDB', enabled: true },\n    { ats: 'greenhouse', board: 'elastic', company: 'Elastic', enabled: true },\n    { ats: 'greenhouse', board: 'grafana', company: 'Grafana Labs', enabled: true },\n    { ats: 'greenhouse', board: 'cockroachlabs', company: 'CockroachDB', enabled: true },\n    { ats: 'greenhouse', board: 'stripe', company: 'Stripe', enabled: true },\n    { ats: 'greenhouse', board: 'databricks', company: 'Databricks', enabled: true },\n    \n    // ===== LEVER COMPANIES =====\n    { ats: 'lever', board: 'twilio', company: 'Twilio', enabled: true },\n    { ats: 'lever', board: 'figma', company: 'Figma', enabled: true },\n    { ats: 'lever', board: 'netflix', company: 'Netflix', enabled: true },\n    { ats: 'lever', board: 'discord', company: 'Discord', enabled: true },\n    { ats: 'lever', board: 'notion', company: 'Notion', enabled: true },\n    { ats: 'lever', board: 'vercel', company: 'Vercel', enabled: true },\n    { ats: 'lever', board: 'supabase', company: 'Supabase', enabled: true },\n    \n    // ===== ASHBY COMPANIES =====\n    { ats: 'ashby', board: 'ramp', company: 'Ramp', enabled: true },\n    { ats: 'ashby', board: 'notion', company: 'Notion (Ashby)', enabled: true },\n    { ats: 'ashby', board: 'plaid', company: 'Plaid', enabled: true },\n    \n    // ===== SMARTRECRUITERS COMPANIES =====\n    { ats: 'smartrecruiters', board: 'Visa', company: 'Visa', enabled: true },\n    { ats: 'smartrecruiters', board: 'BOSCH', company: 'Bosch', enabled: true },\n    \n    // ===== WORKABLE COMPANIES =====\n    { ats: 'workable', board: 'deel', company: 'Deel', enabled: true },\n    \n    // ===== REMOTEOK TAGS =====\n    { ats: 'remoteok', tag: 'devops', company: 'RemoteOK', enabled: true },\n    { ats: 'remoteok', tag: 'cloud', company: 'RemoteOK', enabled: true },\n    { ats: 'remoteok', tag: 'sre', company: 'RemoteOK', enabled: true },\n    { ats: 'remoteok', tag: 'kubernetes', company: 'RemoteOK', enabled: true },\n    \n    // ===== LINKEDIN (LOW FREQUENCY FALLBACK) =====\n    // LinkedIn is disabled by default due to aggressive rate limiting\n    // Enable only if other sources are insufficient\n    { ats: 'linkedin', keywords: 'devops entry level', company: 'LinkedIn', enabled: false }\n  ];\n}\n\n// Filter to only enabled sources\nconst enabledSources = staticData.sources.filter(s => s.enabled !== false);\n\n// User agents for rotation\nconst userAgents = [\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'\n];\n\n// Prepare sources with metadata\nconst preparedSources = enabledSources.map((source, index) => ({\n  ...source,\n  sourceIndex: index,\n  userAgent: userAgents[index % userAgents.length],\n  waitTime: Math.floor(Math.random() * 30000) + 10000 // 10-40 seconds\n}));\n\n// Initialize job collection for this run\nstaticData.collectedJobs = [];\nstaticData.sourceErrors = [];\n\nconsole.log(`Loaded ${preparedSources.length} enabled sources`);\n\nreturn preparedSources.map(source => ({ json: source }));"
       },
-      "id": "init-config",
-      "name": "Initialize Config",
+      "id": "load-sources",
+      "name": "Load Source Configuration",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [220, 400]
     },
     {
       "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Generate random wait time between 10-40 seconds\nconst minWait = 10000;\nconst maxWait = 40000;\nconst waitTime = Math.floor(Math.random() * (maxWait - minWait + 1)) + minWait;\n\n$input.item.json.waitTime = waitTime;\nreturn $input.item;"
+        "batchSize": 1,
+        "options": {}
       },
-      "id": "random-wait-calc",
-      "name": "Calculate Random Wait",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [440, 300]
+      "id": "iterate-sources",
+      "name": "Iterate Sources",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 400]
     },
     {
       "parameters": {
         "amount": "={{ $json.waitTime }}",
         "unit": "milliseconds"
       },
-      "id": "wait-initial",
-      "name": "Initial Wait",
+      "id": "rate-limit-wait",
+      "name": "Rate Limit Wait",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [660, 300]
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "greenhouse",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "greenhouse"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "lever",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "lever"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "ashby",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ashby"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "smartrecruiters",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "smartrecruiters"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "workable",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "workable"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ats }}",
+                    "rightValue": "remoteok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "remoteok"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "route-by-ats",
+      "name": "Route by ATS Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [880, 400]
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs",
+        "url": "=https://boards-api.greenhouse.io/v1/boards/{{ $json.board }}/jobs",
         "options": {
           "response": {
             "response": {
@@ -66,125 +214,17 @@
           "parameters": [
             {
               "name": "User-Agent",
-              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
-      },
-      "id": "greenhouse-hashicorp",
-      "name": "Greenhouse - HashiCorp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 0],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/gitlab/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
+              "value": "={{ $json.userAgent }}"
+            },
             {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         }
       },
-      "id": "greenhouse-gitlab",
-      "name": "Greenhouse - GitLab",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 200],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
-      },
-      "id": "greenhouse-cloudflare",
-      "name": "Greenhouse - Cloudflare",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 400],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/datadog/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-            }
-          ]
-        }
-      },
-      "id": "greenhouse-datadog",
-      "name": "Greenhouse - Datadog",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 600],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://api.lever.co/v0/postings/twilio?mode=json",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
-            }
-          ]
-        }
-      },
-      "id": "lever-twilio",
-      "name": "Lever - Twilio",
+      "id": "handler-greenhouse",
+      "name": "Greenhouse Handler",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1100, 0],
@@ -193,7 +233,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://api.lever.co/v0/postings/figma?mode=json",
+        "url": "=https://api.lever.co/v0/postings/{{ $json.board }}?mode=json",
         "options": {
           "response": {
             "response": {
@@ -206,13 +246,17 @@
           "parameters": [
             {
               "name": "User-Agent",
-              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+              "value": "={{ $json.userAgent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         }
       },
-      "id": "lever-figma",
-      "name": "Lever - Figma",
+      "id": "handler-lever",
+      "name": "Lever Handler",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1100, 200],
@@ -221,7 +265,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://api.lever.co/v0/postings/netflix?mode=json",
+        "url": "=https://api.ashbyhq.com/posting-api/job-board/{{ $json.board }}",
         "options": {
           "response": {
             "response": {
@@ -234,13 +278,17 @@
           "parameters": [
             {
               "name": "User-Agent",
-              "value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+              "value": "={{ $json.userAgent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         }
       },
-      "id": "lever-netflix",
-      "name": "Lever - Netflix",
+      "id": "handler-ashby",
+      "name": "Ashby Handler",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1100, 400],
@@ -249,7 +297,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://remoteok.com/api?tag=devops",
+        "url": "=https://api.smartrecruiters.com/v1/companies/{{ $json.board }}/postings",
         "options": {
           "response": {
             "response": {
@@ -262,187 +310,198 @@
           "parameters": [
             {
               "name": "User-Agent",
-              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              "value": "={{ $json.userAgent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         }
       },
-      "id": "remoteok-devops",
-      "name": "RemoteOK - DevOps",
+      "id": "handler-smartrecruiters",
+      "name": "SmartRecruiters Handler",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "position": [1100, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://apply.workable.com/api/v1/widget/accounts/{{ $json.board }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{ $json.userAgent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "handler-workable",
+      "name": "Workable Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 800],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://remoteok.com/api?tag={{ $json.tag }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{ $json.userAgent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "handler-remoteok",
+      "name": "RemoteOK Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 1000],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// GREENHOUSE PARSER - Generic handler for all Greenhouse boards\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  if (data.jobs && Array.isArray(data.jobs)) {\n    const companyName = data.name || sourceConfig.company || 'Unknown';\n    \n    for (const job of data.jobs) {\n      jobs.push({\n        job_title: (job.title || '').trim(),\n        company: companyName,\n        location: (job.location?.name || job.offices?.[0]?.name || 'Unknown').trim(),\n        job_url: job.absolute_url || `https://boards.greenhouse.io/${sourceConfig.board}/jobs/${job.id}`,\n        source: 'Greenhouse',\n        ats: 'greenhouse',\n        board: sourceConfig.board,\n        description: '',\n        posted_at: job.updated_at || new Date().toISOString(),\n        job_id: job.id?.toString() || ''\n      });\n    }\n  }\n} catch (err) {\n  console.log(`Greenhouse parse error for ${sourceConfig.board}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
+      },
+      "id": "parse-greenhouse",
+      "name": "Parse Greenhouse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1320, 0],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://remoteok.com/api?tag=cloud",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// LEVER PARSER - Generic handler for all Lever boards\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  if (Array.isArray(data)) {\n    for (const job of data) {\n      if (job.hostedUrl || job.applyUrl) {\n        jobs.push({\n          job_title: (job.text || job.title || '').trim(),\n          company: sourceConfig.company || job.categories?.team || 'Unknown',\n          location: (job.categories?.location || job.workplaceType || 'Unknown').trim(),\n          job_url: job.hostedUrl || job.applyUrl || '',\n          source: 'Lever',\n          ats: 'lever',\n          board: sourceConfig.board,\n          description: (job.descriptionPlain || job.description || '').toLowerCase().substring(0, 1000),\n          posted_at: job.createdAt ? new Date(job.createdAt).toISOString() : new Date().toISOString(),\n          job_id: job.id || ''\n        });\n      }\n    }\n  }\n} catch (err) {\n  console.log(`Lever parse error for ${sourceConfig.board}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
       },
-      "id": "remoteok-cloud",
-      "name": "RemoteOK - Cloud",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "parse-lever",
+      "name": "Parse Lever",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1320, 200],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://remoteok.com/api?tag=sre",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// ASHBY PARSER - Generic handler for all Ashby boards\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  const jobList = data.jobs || data.data || [];\n  \n  if (Array.isArray(jobList)) {\n    for (const job of jobList) {\n      jobs.push({\n        job_title: (job.title || job.name || '').trim(),\n        company: sourceConfig.company || job.organizationName || 'Unknown',\n        location: (job.location || job.locationName || job.address?.city || 'Unknown').trim(),\n        job_url: job.jobUrl || job.applicationUrl || `https://jobs.ashbyhq.com/${sourceConfig.board}/${job.id}`,\n        source: 'Ashby',\n        ats: 'ashby',\n        board: sourceConfig.board,\n        description: (job.descriptionPlain || job.description || '').toLowerCase().substring(0, 1000),\n        posted_at: job.publishedAt || job.createdAt || new Date().toISOString(),\n        job_id: job.id || ''\n      });\n    }\n  }\n} catch (err) {\n  console.log(`Ashby parse error for ${sourceConfig.board}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
       },
-      "id": "remoteok-sre",
-      "name": "RemoteOK - SRE",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "parse-ashby",
+      "name": "Parse Ashby",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1320, 400],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/mongodb/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// SMARTRECRUITERS PARSER - Generic handler for all SmartRecruiters boards\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  const jobList = data.content || data.jobs || data.results || [];\n  \n  if (Array.isArray(jobList)) {\n    for (const job of jobList) {\n      const location = job.location || {};\n      const locationStr = [location.city, location.region, location.country]\n        .filter(Boolean).join(', ') || 'Unknown';\n      \n      jobs.push({\n        job_title: (job.name || job.title || '').trim(),\n        company: sourceConfig.company || job.company?.name || 'Unknown',\n        location: locationStr.trim(),\n        job_url: job.applyUrl || job.ref || `https://jobs.smartrecruiters.com/${sourceConfig.board}/${job.id}`,\n        source: 'SmartRecruiters',\n        ats: 'smartrecruiters',\n        board: sourceConfig.board,\n        description: (job.jobAd?.sections?.jobDescription?.text || '').toLowerCase().substring(0, 1000),\n        posted_at: job.releasedDate || job.createdOn || new Date().toISOString(),\n        job_id: job.id || job.uuid || ''\n      });\n    }\n  }\n} catch (err) {\n  console.log(`SmartRecruiters parse error for ${sourceConfig.board}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
       },
-      "id": "greenhouse-mongodb",
-      "name": "Greenhouse - MongoDB",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1540, 0],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/elastic/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
-      },
-      "id": "greenhouse-elastic",
-      "name": "Greenhouse - Elastic",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1540, 200],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://boards-api.greenhouse.io/v1/boards/cockroachlabs/jobs",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        },
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "User-Agent",
-              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-          ]
-        }
-      },
-      "id": "greenhouse-cockroach",
-      "name": "Greenhouse - CockroachDB",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1540, 400],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Parse and normalize jobs from all sources\nconst allJobs = [];\nconst errors = [];\n\n// Helper function to normalize job data\nfunction normalizeJob(job, source, company) {\n  return {\n    job_title: (job.title || job.position || job.name || '').trim(),\n    company: (company || job.company || job.company_name || '').trim(),\n    location: (job.location?.name || job.location || job.categories?.location || 'Remote').trim(),\n    job_url: job.absolute_url || job.hostedUrl || job.url || job.apply_url || '',\n    source: source,\n    description: (job.content || job.description || job.descriptionPlain || '').toLowerCase(),\n    posted_at: job.updated_at || job.createdAt || job.date || new Date().toISOString()\n  };\n}\n\n// Process each input item (from different sources)\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  try {\n    // Greenhouse format\n    if (data.jobs && Array.isArray(data.jobs)) {\n      const company = data.name || 'Unknown';\n      for (const job of data.jobs) {\n        allJobs.push(normalizeJob(job, 'Greenhouse', company));\n      }\n    }\n    // Lever format (array of jobs)\n    else if (Array.isArray(data) && data.length > 0 && data[0].hostedUrl) {\n      for (const job of data) {\n        const company = job.categories?.team || 'Unknown';\n        allJobs.push(normalizeJob(job, 'Lever', company));\n      }\n    }\n    // RemoteOK format (array with first item being metadata)\n    else if (Array.isArray(data) && data.length > 1) {\n      for (let i = 1; i < data.length; i++) {\n        const job = data[i];\n        if (job.position && job.company) {\n          allJobs.push({\n            job_title: (job.position || '').trim(),\n            company: (job.company || '').trim(),\n            location: (job.location || 'Remote').trim(),\n            job_url: job.url || `https://remoteok.com/jobs/${job.id}`,\n            source: 'RemoteOK',\n            description: (job.description || '').toLowerCase(),\n            posted_at: job.date || new Date().toISOString()\n          });\n        }\n      }\n    }\n  } catch (err) {\n    errors.push({ source: 'parsing', error: err.message });\n  }\n}\n\nreturn [{ json: { jobs: allJobs, errors: errors, totalRaw: allJobs.length } }];"
-      },
-      "id": "normalize-jobs",
-      "name": "Normalize All Jobs",
+      "id": "parse-smartrecruiters",
+      "name": "Parse SmartRecruiters",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1760, 300]
+      "position": [1320, 600],
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "// Filter jobs based on title, seniority, and relevance\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\n\nconst config = {\n  keywords: [\n    'devops', 'cloud engineer', 'platform engineer', 'kubernetes',\n    'mlops', 'aiops', 'llmops', 'cloud infrastructure', 'ml infrastructure',\n    'ai platform', 'cloud platform', 'site reliability', 'sre', 'infrastructure'\n  ],\n  \n  positiveSignals: [\n    'kubernetes', 'k8s', 'docker', 'aws', 'gcp', 'azure', 'terraform',\n    'ansible', 'ci/cd', 'cicd', 'jenkins', 'gitlab', 'github actions', 'argocd',\n    'gitops', 'helm', 'linux', 'cloud native', 'infrastructure as code',\n    'iac', 'prometheus', 'grafana', 'datadog', 'cloudformation', 'pulumi',\n    'kubeflow', 'mlflow', 'sagemaker', 'vertex ai', 'ray', 'airflow'\n  ],\n  \n  juniorIndicators: [\n    'junior', 'entry level', 'entry-level', 'associate', 'graduate',\n    'trainee', 'intern', 'internship', 'new grad', 'early career',\n    '0-1 year', '0-2 year', '1-2 year', '1-3 year', '2 year',\n    '0–1 year', '0–2 year', '1–2 year', '1–3 year', '2-3 year',\n    'fresher', 'beginner', 'no experience required', 'recent graduate'\n  ],\n  \n  seniorExclusions: [\n    'senior', 'staff', 'principal', 'lead', 'manager', 'architect',\n    'director', 'head of', 'vp ', 'vice president', 'chief', 'sr.', 'sr '\n  ],\n  \n  experienceExclusions: [\n    '4+ year', '5+ year', '6+ year', '7+ year', '8+ year', '10+ year',\n    '4\\\\+ year', '5\\\\+ year', 'extensive experience', 'significant experience',\n    'senior-level', 'senior level', 'seasoned professional', '5 years',\n    '6 years', '7 years', '8 years', '10 years'\n  ],\n  \n  excludedLocations: [\n    'pakistan', 'bangladesh', 'sri lanka', 'syria'\n  ],\n  \n  excludedRoles: [\n    'sales', 'marketing', 'hr ', 'human resource', 'recruiter',\n    'customer success', 'account manager', 'business development',\n    'product manager', 'project manager', 'scrum master'\n  ]\n};\n\nfunction isRelevantRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = job.description || '';\n  \n  // Check if title contains any relevant keywords\n  const hasRelevantTitle = config.keywords.some(kw => titleLower.includes(kw));\n  \n  // Check if description has positive signals\n  const positiveSignalCount = config.positiveSignals.filter(sig => \n    titleLower.includes(sig) || descLower.includes(sig)\n  ).length;\n  \n  return hasRelevantTitle || positiveSignalCount >= 2;\n}\n\nfunction isJuniorLevel(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = job.description || '';\n  const combined = titleLower + ' ' + descLower;\n  \n  // Check for explicit junior indicators in title\n  const hasJuniorTitle = config.juniorIndicators.some(ind => titleLower.includes(ind));\n  \n  // Check for junior indicators in description\n  const hasJuniorDesc = config.juniorIndicators.some(ind => descLower.includes(ind));\n  \n  // Check for senior exclusions in title (strict)\n  const hasSeniorTitle = config.seniorExclusions.some(exc => titleLower.includes(exc));\n  \n  // Check for high experience requirements in description\n  const hasHighExp = config.experienceExclusions.some(exc => descLower.includes(exc));\n  \n  // If title explicitly says junior/entry level, include it\n  if (hasJuniorTitle) return true;\n  \n  // If title says senior/lead/etc, exclude it\n  if (hasSeniorTitle) return false;\n  \n  // If description mentions high experience, exclude\n  if (hasHighExp) return false;\n  \n  // If description mentions junior/early career, include\n  if (hasJuniorDesc) return true;\n  \n  // For roles without explicit seniority, include if no senior indicators\n  // This captures \"DevOps Engineer\" roles that don't specify level\n  return !hasSeniorTitle && !hasHighExp;\n}\n\nfunction isValidLocation(job) {\n  const locationLower = (job.location || '').toLowerCase();\n  return !config.excludedLocations.some(loc => locationLower.includes(loc));\n}\n\nfunction isNotExcludedRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  return !config.excludedRoles.some(role => titleLower.includes(role));\n}\n\n// Apply all filters\nconst filteredJobs = jobs.filter(job => {\n  if (!job.job_title || !job.job_url) return false;\n  if (!isRelevantRole(job)) return false;\n  if (!isJuniorLevel(job)) return false;\n  if (!isValidLocation(job)) return false;\n  if (!isNotExcludedRole(job)) return false;\n  return true;\n});\n\nreturn [{ json: { \n  jobs: filteredJobs, \n  totalRaw: input.totalRaw,\n  totalFiltered: filteredJobs.length,\n  errors: input.errors \n} }];"
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// WORKABLE PARSER - Generic handler for all Workable boards\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  const jobList = data.jobs || data.results || [];\n  \n  if (Array.isArray(jobList)) {\n    for (const job of jobList) {\n      jobs.push({\n        job_title: (job.title || job.name || '').trim(),\n        company: sourceConfig.company || data.name || 'Unknown',\n        location: (job.location || job.city || 'Unknown').trim(),\n        job_url: job.url || job.application_url || `https://apply.workable.com/${sourceConfig.board}/j/${job.shortcode}`,\n        source: 'Workable',\n        ats: 'workable',\n        board: sourceConfig.board,\n        description: (job.description || '').toLowerCase().substring(0, 1000),\n        posted_at: job.published_on || job.created_at || new Date().toISOString(),\n        job_id: job.shortcode || job.id || ''\n      });\n    }\n  }\n} catch (err) {\n  console.log(`Workable parse error for ${sourceConfig.board}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
+      },
+      "id": "parse-workable",
+      "name": "Parse Workable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 800],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// =============================================================================\n// REMOTEOK PARSER - Generic handler for all RemoteOK tags\n// =============================================================================\nconst sourceConfig = $('Route by ATS Type').first().json;\nconst data = $input.item.json;\nconst jobs = [];\n\ntry {\n  if (Array.isArray(data) && data.length > 0) {\n    // First item is usually metadata, skip it if it has 'legal' property\n    const startIdx = data[0]?.legal ? 1 : 0;\n    \n    for (let i = startIdx; i < data.length; i++) {\n      const job = data[i];\n      if (job.position && job.company) {\n        jobs.push({\n          job_title: (job.position || '').trim(),\n          company: (job.company || '').trim(),\n          location: (job.location || 'Remote').trim(),\n          job_url: job.url || `https://remoteok.com/remote-jobs/${job.id}`,\n          source: 'RemoteOK',\n          ats: 'remoteok',\n          board: sourceConfig.tag,\n          description: (job.description || '').toLowerCase().substring(0, 1000),\n          posted_at: job.date || new Date().toISOString(),\n          job_id: job.id?.toString() || '',\n          tags: job.tags || []\n        });\n      }\n    }\n  }\n} catch (err) {\n  console.log(`RemoteOK parse error for tag ${sourceConfig.tag}: ${err.message}`);\n}\n\nreturn { json: { jobs, source: sourceConfig, count: jobs.length } };"
+      },
+      "id": "parse-remoteok",
+      "name": "Parse RemoteOK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 1000],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// FALLBACK HANDLER - For unsupported ATS types\n// =============================================================================\nconst sourceConfig = $input.first().json;\n\nconsole.log(`Unsupported ATS type: ${sourceConfig.ats} for ${sourceConfig.company}`);\n\n// Log the error for monitoring\nconst staticData = $getWorkflowStaticData('global');\nstaticData.sourceErrors.push({\n  source: sourceConfig,\n  error: `Unsupported ATS type: ${sourceConfig.ats}`,\n  timestamp: new Date().toISOString()\n});\n\nreturn [{ json: { jobs: [], source: sourceConfig, count: 0, error: 'unsupported_ats' } }];"
+      },
+      "id": "handler-fallback",
+      "name": "Unsupported ATS Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 1200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// COLLECT JOBS - Accumulate jobs from current source into static data\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst result = $input.first().json;\n\nif (result.jobs && Array.isArray(result.jobs)) {\n  staticData.collectedJobs.push(...result.jobs);\n  console.log(`Collected ${result.jobs.length} jobs from ${result.source?.company || 'unknown'} (${result.source?.ats || 'unknown'})`);\n}\n\nif (result.error) {\n  staticData.sourceErrors.push({\n    source: result.source,\n    error: result.error,\n    timestamp: new Date().toISOString()\n  });\n}\n\nreturn [{ json: { \n  collected: staticData.collectedJobs.length,\n  sourceProcessed: result.source?.company || 'unknown'\n} }];"
+      },
+      "id": "collect-jobs",
+      "name": "Collect Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// FILTER JOBS - Apply all filtering rules\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst allJobs = staticData.collectedJobs || [];\n\n// Clear collection for next run\nstaticData.collectedJobs = [];\n\nconsole.log(`Processing ${allJobs.length} total jobs`);\n\n// =============================================================================\n// FILTERING CONFIGURATION - Customize these arrays as needed\n// =============================================================================\nconst config = {\n  // Keywords that indicate relevant DevOps/Cloud/Platform roles\n  relevantKeywords: [\n    'devops', 'cloud engineer', 'platform engineer', 'kubernetes', 'k8s',\n    'mlops', 'aiops', 'llmops', 'cloud infrastructure', 'ml infrastructure',\n    'ai platform', 'cloud platform', 'site reliability', 'sre', 'infrastructure',\n    'cloud operations', 'devsecops', 'gitops', 'cloud native', 'container',\n    'aws engineer', 'azure engineer', 'gcp engineer'\n  ],\n  \n  // Strong positive signals in title or description\n  positiveSignals: [\n    'kubernetes', 'k8s', 'docker', 'aws', 'gcp', 'azure', 'terraform',\n    'ansible', 'ci/cd', 'cicd', 'jenkins', 'gitlab', 'github actions', 'argocd',\n    'gitops', 'helm', 'linux', 'cloud native', 'infrastructure as code',\n    'iac', 'prometheus', 'grafana', 'datadog', 'cloudformation', 'pulumi',\n    'kubeflow', 'mlflow', 'sagemaker', 'vertex ai', 'ray', 'airflow',\n    'eks', 'gke', 'aks', 'openshift', 'rancher'\n  ],\n  \n  // Indicators of junior/entry-level positions\n  juniorIndicators: [\n    'junior', 'entry level', 'entry-level', 'associate', 'graduate',\n    'trainee', 'intern', 'internship', 'new grad', 'early career',\n    '0-1 year', '0-2 year', '1-2 year', '1-3 year', '2 year', '2-3 year',\n    '0–1 year', '0–2 year', '1–2 year', '1–3 year', '2–3 year',\n    'fresher', 'beginner', 'no experience required', 'recent graduate',\n    'new college', 'university grad', 'i ', 'ii ', ' i', ' ii',\n    'level 1', 'level 2', 'tier 1', 'tier 2'\n  ],\n  \n  // Seniority indicators to EXCLUDE from titles\n  seniorExclusions: [\n    'senior', 'staff', 'principal', 'lead', 'manager', 'architect',\n    'director', 'head of', 'vp ', 'vice president', 'chief', 'sr.', 'sr ',\n    'distinguished', 'fellow', 'iii', 'iv', 'level 3', 'level 4', 'level 5'\n  ],\n  \n  // High experience indicators to EXCLUDE from descriptions\n  experienceExclusions: [\n    '4+ year', '5+ year', '6+ year', '7+ year', '8+ year', '10+ year',\n    '4\\\\+ year', '5\\\\+ year', 'extensive experience', 'significant experience',\n    'senior-level', 'senior level', 'seasoned professional', 'deep expertise',\n    '5 years', '6 years', '7 years', '8 years', '10 years',\n    'proven track record', 'expert level'\n  ],\n  \n  // Locations to exclude\n  excludedLocations: ['pakistan', 'bangladesh', 'sri lanka', 'syria'],\n  \n  // Role types to exclude\n  excludedRoles: [\n    'sales', 'marketing', 'hr ', 'human resource', 'recruiter',\n    'customer success', 'account manager', 'business development',\n    'product manager', 'project manager', 'scrum master', 'support engineer',\n    'technical writer', 'content', 'design', 'ux ', 'ui '\n  ]\n};\n\n// =============================================================================\n// FILTERING FUNCTIONS\n// =============================================================================\n\nfunction isRelevantRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = (job.description || '').toLowerCase();\n  \n  // Check if title contains any relevant keywords\n  const hasRelevantTitle = config.relevantKeywords.some(kw => titleLower.includes(kw));\n  \n  // Check if description has positive signals\n  const positiveSignalCount = config.positiveSignals.filter(sig => \n    titleLower.includes(sig) || descLower.includes(sig)\n  ).length;\n  \n  return hasRelevantTitle || positiveSignalCount >= 2;\n}\n\nfunction isJuniorLevel(job) {\n  const titleLower = job.job_title.toLowerCase();\n  const descLower = (job.description || '').toLowerCase();\n  \n  // Check for explicit junior indicators in title (high confidence include)\n  const hasJuniorTitle = config.juniorIndicators.some(ind => titleLower.includes(ind));\n  \n  // Check for junior indicators in description\n  const hasJuniorDesc = config.juniorIndicators.some(ind => descLower.includes(ind));\n  \n  // Check for senior exclusions in title (high confidence exclude)\n  const hasSeniorTitle = config.seniorExclusions.some(exc => titleLower.includes(exc));\n  \n  // Check for high experience requirements in description\n  const hasHighExp = config.experienceExclusions.some(exc => descLower.includes(exc));\n  \n  // Decision logic:\n  // 1. If title explicitly says junior/entry level → INCLUDE\n  if (hasJuniorTitle) return true;\n  \n  // 2. If title says senior/lead/etc → EXCLUDE\n  if (hasSeniorTitle) return false;\n  \n  // 3. If description mentions high experience → EXCLUDE\n  if (hasHighExp) return false;\n  \n  // 4. If description mentions junior/early career → INCLUDE\n  if (hasJuniorDesc) return true;\n  \n  // 5. For roles without explicit seniority, include if no senior indicators\n  // This captures \"DevOps Engineer\" roles that don't specify level\n  return !hasSeniorTitle && !hasHighExp;\n}\n\nfunction isValidLocation(job) {\n  const locationLower = (job.location || '').toLowerCase();\n  return !config.excludedLocations.some(loc => locationLower.includes(loc));\n}\n\nfunction isNotExcludedRole(job) {\n  const titleLower = job.job_title.toLowerCase();\n  return !config.excludedRoles.some(role => titleLower.includes(role));\n}\n\n// =============================================================================\n// APPLY FILTERS\n// =============================================================================\n\nconst filteredJobs = allJobs.filter(job => {\n  // Basic validation\n  if (!job.job_title || !job.job_url) return false;\n  \n  // Apply all filters\n  if (!isRelevantRole(job)) return false;\n  if (!isJuniorLevel(job)) return false;\n  if (!isValidLocation(job)) return false;\n  if (!isNotExcludedRole(job)) return false;\n  \n  return true;\n});\n\nconsole.log(`Filtered to ${filteredJobs.length} relevant entry-level jobs`);\n\nreturn [{ json: { \n  jobs: filteredJobs, \n  totalRaw: allJobs.length,\n  totalFiltered: filteredJobs.length,\n  errors: staticData.sourceErrors || []\n} }];"
       },
       "id": "filter-jobs",
       "name": "Filter Jobs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [1980, 400]
     },
     {
       "parameters": {
-        "jsCode": "// Deduplicate jobs using static data storage\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize hash storage if not exists\nif (!staticData.seenJobHashes) {\n  staticData.seenJobHashes = {};\n}\n\n// Clean up old hashes (older than 30 days)\nconst thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);\nfor (const hash in staticData.seenJobHashes) {\n  if (staticData.seenJobHashes[hash] < thirtyDaysAgo) {\n    delete staticData.seenJobHashes[hash];\n  }\n}\n\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst newJobs = [];\n\n// Simple hash function\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return hash.toString(16);\n}\n\nfor (const job of jobs) {\n  // Create unique identifier from title + company + location\n  const identifier = [\n    job.job_title.toLowerCase().trim(),\n    job.company.toLowerCase().trim(),\n    job.location.toLowerCase().trim()\n  ].join('|');\n  \n  const hash = simpleHash(identifier);\n  \n  // Check if we've seen this job before\n  if (!staticData.seenJobHashes[hash]) {\n    staticData.seenJobHashes[hash] = Date.now();\n    newJobs.push(job);\n  }\n}\n\nreturn [{ json: { \n  jobs: newJobs, \n  totalRaw: input.totalRaw,\n  totalFiltered: input.totalFiltered,\n  totalNew: newJobs.length,\n  errors: input.errors\n} }];"
+        "jsCode": "// =============================================================================\n// DEDUPLICATE JOBS - Using persistent hash storage\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize hash storage if not exists\nif (!staticData.seenJobHashes) {\n  staticData.seenJobHashes = {};\n}\n\n// Clean up old hashes (older than 30 days) to prevent unbounded growth\nconst thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);\nlet cleanedCount = 0;\nfor (const hash in staticData.seenJobHashes) {\n  if (staticData.seenJobHashes[hash] < thirtyDaysAgo) {\n    delete staticData.seenJobHashes[hash];\n    cleanedCount++;\n  }\n}\nif (cleanedCount > 0) {\n  console.log(`Cleaned up ${cleanedCount} old job hashes`);\n}\n\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst newJobs = [];\n\n// Simple hash function for deduplication\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return hash.toString(16);\n}\n\nfor (const job of jobs) {\n  // Create unique identifier from normalized fields\n  const identifier = [\n    job.job_title.toLowerCase().trim(),\n    job.company.toLowerCase().trim(),\n    job.location.toLowerCase().trim()\n  ].join('|');\n  \n  const hash = simpleHash(identifier);\n  \n  // Check if we've seen this job before\n  if (!staticData.seenJobHashes[hash]) {\n    staticData.seenJobHashes[hash] = Date.now();\n    newJobs.push(job);\n  }\n}\n\nconsole.log(`Found ${newJobs.length} new jobs (${jobs.length - newJobs.length} duplicates filtered)`);\nconsole.log(`Total hashes in storage: ${Object.keys(staticData.seenJobHashes).length}`);\n\nreturn [{ json: { \n  jobs: newJobs, \n  totalRaw: input.totalRaw,\n  totalFiltered: input.totalFiltered,\n  totalNew: newJobs.length,\n  errors: input.errors\n} }];"
       },
       "id": "deduplicate-jobs",
       "name": "Deduplicate Jobs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2200, 300]
+      "position": [2200, 400]
     },
     {
       "parameters": {
@@ -454,7 +513,7 @@
           },
           "conditions": [
             {
-              "id": "check-new-jobs",
+              "id": "has-new-jobs",
               "leftValue": "={{ $json.totalNew }}",
               "rightValue": 0,
               "operator": {
@@ -471,17 +530,17 @@
       "name": "Has New Jobs?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2420, 300]
+      "position": [2420, 400]
     },
     {
       "parameters": {
-        "jsCode": "// Format jobs into Telegram messages with proper batching\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst messages = [];\nconst MAX_MESSAGE_LENGTH = 3500; // Leave buffer for formatting\n\nfunction formatJob(job) {\n  const lines = [\n    `*${escapeMarkdown(job.job_title)}*`,\n    `Company: ${escapeMarkdown(job.company)}`,\n    `Location: ${escapeMarkdown(job.location)}`,\n    `Source: ${escapeMarkdown(job.source)}`,\n    `[Apply Here](${job.job_url})`,\n    '---'\n  ];\n  return lines.join('\\n');\n}\n\nfunction escapeMarkdown(text) {\n  if (!text) return '';\n  return text\n    .replace(/\\_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/\\~/g, '\\\\~')\n    .replace(/\\`/g, '\\\\`')\n    .replace(/\\>/g, '\\\\>')\n    .replace(/\\#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/\\-/g, '\\\\-')\n    .replace(/\\=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/\\{/g, '\\\\{')\n    .replace(/\\}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/\\!/g, '\\\\!');\n}\n\nlet currentMessage = `*New Job Alerts* \\\\(${jobs.length} found\\\\)\\n\\n`;\nlet jobsInCurrentMessage = 0;\n\nfor (const job of jobs) {\n  const formattedJob = formatJob(job);\n  \n  // Check if adding this job would exceed the limit\n  if (currentMessage.length + formattedJob.length > MAX_MESSAGE_LENGTH || jobsInCurrentMessage >= 7) {\n    // Save current message and start new one\n    messages.push({ text: currentMessage.trim() });\n    currentMessage = `*Job Alerts \\\\(continued\\\\)*\\n\\n`;\n    jobsInCurrentMessage = 0;\n  }\n  \n  currentMessage += formattedJob + '\\n';\n  jobsInCurrentMessage++;\n}\n\n// Add the last message if it has content\nif (jobsInCurrentMessage > 0) {\n  messages.push({ text: currentMessage.trim() });\n}\n\n// Add summary message\nconst summary = [\n  `\\n*Summary*`,\n  `Total scraped: ${input.totalRaw || 0}`,\n  `After filtering: ${input.totalFiltered || 0}`,\n  `New jobs: ${input.totalNew || 0}`,\n  `Timestamp: ${new Date().toISOString()}`\n].join('\\n');\n\nif (messages.length > 0) {\n  messages[messages.length - 1].text += '\\n' + escapeMarkdown(summary);\n}\n\nreturn messages.map(msg => ({ json: msg }));"
+        "jsCode": "// =============================================================================\n// FORMAT TELEGRAM MESSAGES - With proper batching\n// =============================================================================\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst messages = [];\nconst MAX_MESSAGE_LENGTH = 3500; // Leave buffer under 4096 limit\nconst MAX_JOBS_PER_MESSAGE = 7;\n\n// Escape special characters for Telegram MarkdownV2\nfunction escapeMarkdown(text) {\n  if (!text) return '';\n  return text\n    .replace(/\\_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/\\~/g, '\\\\~')\n    .replace(/\\`/g, '\\\\`')\n    .replace(/\\>/g, '\\\\>')\n    .replace(/\\#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/\\-/g, '\\\\-')\n    .replace(/\\=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/\\{/g, '\\\\{')\n    .replace(/\\}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/\\!/g, '\\\\!');\n}\n\nfunction formatJob(job) {\n  const lines = [\n    `*${escapeMarkdown(job.job_title)}*`,\n    `Company: ${escapeMarkdown(job.company)}`,\n    `Location: ${escapeMarkdown(job.location)}`,\n    `Source: ${escapeMarkdown(job.source)}`,\n    `[Apply Here](${job.job_url})`,\n    '\\\\-\\\\-\\\\-'\n  ];\n  return lines.join('\\n');\n}\n\n// Build messages with proper batching\nlet currentMessage = `*New Job Alerts* \\\\(${jobs.length} found\\\\)\\n\\n`;\nlet jobsInCurrentMessage = 0;\n\nfor (const job of jobs) {\n  const formattedJob = formatJob(job);\n  \n  // Check if adding this job would exceed limits\n  if (currentMessage.length + formattedJob.length > MAX_MESSAGE_LENGTH || \n      jobsInCurrentMessage >= MAX_JOBS_PER_MESSAGE) {\n    // Save current message and start new one\n    messages.push({ text: currentMessage.trim() });\n    currentMessage = `*Job Alerts \\\\(continued\\\\)*\\n\\n`;\n    jobsInCurrentMessage = 0;\n  }\n  \n  currentMessage += formattedJob + '\\n';\n  jobsInCurrentMessage++;\n}\n\n// Add the last message if it has content\nif (jobsInCurrentMessage > 0) {\n  // Add summary to last message\n  const summary = [\n    '',\n    `*Summary*`,\n    `Total scraped: ${input.totalRaw || 0}`,\n    `After filtering: ${input.totalFiltered || 0}`,\n    `New jobs: ${input.totalNew || 0}`,\n    `Timestamp: ${new Date().toISOString().replace(/\\./g, '\\\\.')}`\n  ].join('\\n');\n  \n  currentMessage += escapeMarkdown(summary.replace(/\\\\\\./g, '.'));\n  messages.push({ text: currentMessage.trim() });\n}\n\nconsole.log(`Created ${messages.length} Telegram messages for ${jobs.length} jobs`);\n\nreturn messages.map(msg => ({ json: msg }));"
       },
-      "id": "format-telegram-messages",
+      "id": "format-telegram",
       "name": "Format Telegram Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2640, 200]
+      "position": [2640, 300]
     },
     {
       "parameters": {
@@ -497,7 +556,7 @@
       "name": "Send to Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2860, 200],
+      "position": [2860, 300],
       "credentials": {
         "telegramApi": {
           "id": "telegram-bot-cred",
@@ -511,31 +570,31 @@
         "amount": 2,
         "unit": "seconds"
       },
-      "id": "wait-between-messages",
-      "name": "Wait Between Messages",
+      "id": "telegram-delay",
+      "name": "Message Delay",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [3080, 200]
+      "position": [3080, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Log execution summary (no new jobs case)\nconst input = $input.first().json;\n\nconsole.log('Job Alert Workflow Summary:');\nconsole.log(`- Total jobs scraped: ${input.totalRaw || 0}`);\nconsole.log(`- After filtering: ${input.totalFiltered || 0}`);\nconsole.log(`- New jobs found: ${input.totalNew || 0}`);\nconsole.log('- No new jobs to send');\n\nif (input.errors && input.errors.length > 0) {\n  console.log('Errors encountered:');\n  input.errors.forEach(err => console.log(`  - ${JSON.stringify(err)}`));\n}\n\nreturn [{ json: { status: 'completed', newJobs: 0 } }];"
+        "jsCode": "// Log completion\nconsole.log('Telegram messages sent successfully');\nreturn $input.all();"
+      },
+      "id": "log-complete",
+      "name": "Log Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// LOG NO NEW JOBS - Execution summary when no alerts needed\n// =============================================================================\nconst input = $input.first().json;\n\nconsole.log('='.repeat(60));\nconsole.log('Job Alert Workflow Summary');\nconsole.log('='.repeat(60));\nconsole.log(`Total jobs scraped: ${input.totalRaw || 0}`);\nconsole.log(`After filtering: ${input.totalFiltered || 0}`);\nconsole.log(`New jobs found: ${input.totalNew || 0}`);\nconsole.log('Result: No new jobs to send');\n\nif (input.errors && input.errors.length > 0) {\n  console.log('');\n  console.log('Errors encountered:');\n  input.errors.forEach(err => {\n    console.log(`  - ${err.source?.company || 'unknown'}: ${err.error}`);\n  });\n}\n\nconsole.log('='.repeat(60));\n\nreturn [{ json: { status: 'completed', newJobs: 0, timestamp: new Date().toISOString() } }];"
       },
       "id": "log-no-jobs",
       "name": "Log No New Jobs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2640, 400]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Final logging\nconsole.log('Telegram messages sent successfully');\nreturn $input.all();"
-      },
-      "id": "final-log",
-      "name": "Final Log",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [3300, 200]
+      "position": [2640, 500]
     }
   ],
   "connections": {
@@ -543,254 +602,254 @@
       "main": [
         [
           {
-            "node": "Initialize Config",
+            "node": "Load Source Configuration",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Initialize Config": {
+    "Load Source Configuration": {
       "main": [
         [
           {
-            "node": "Calculate Random Wait",
+            "node": "Iterate Sources",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Calculate Random Wait": {
+    "Iterate Sources": {
       "main": [
         [
           {
-            "node": "Initial Wait",
+            "node": "Rate Limit Wait",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Initial Wait": {
-      "main": [
-        [
-          {
-            "node": "Greenhouse - HashiCorp",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - GitLab",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - Cloudflare",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - Datadog",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Lever - Twilio",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Lever - Figma",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Lever - Netflix",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "RemoteOK - DevOps",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "RemoteOK - Cloud",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "RemoteOK - SRE",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - MongoDB",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - Elastic",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Greenhouse - CockroachDB",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - HashiCorp": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - GitLab": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - Cloudflare": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - Datadog": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lever - Twilio": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lever - Figma": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lever - Netflix": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RemoteOK - DevOps": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RemoteOK - Cloud": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RemoteOK - SRE": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - MongoDB": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - Elastic": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Greenhouse - CockroachDB": {
-      "main": [
-        [
-          {
-            "node": "Normalize All Jobs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalize All Jobs": {
-      "main": [
+        ],
         [
           {
             "node": "Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Wait": {
+      "main": [
+        [
+          {
+            "node": "Route by ATS Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by ATS Type": {
+      "main": [
+        [
+          {
+            "node": "Greenhouse Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lever Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ashby Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SmartRecruiters Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Workable Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RemoteOK Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unsupported ATS Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse Greenhouse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lever Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse Lever",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ashby Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse Ashby",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SmartRecruiters Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse SmartRecruiters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workable Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse Workable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK Handler": {
+      "main": [
+        [
+          {
+            "node": "Parse RemoteOK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsupported ATS Handler": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Greenhouse": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lever": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ashby": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SmartRecruiters": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Workable": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RemoteOK": {
+      "main": [
+        [
+          {
+            "node": "Collect Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Jobs": {
+      "main": [
+        [
+          {
+            "node": "Iterate Sources",
             "type": "main",
             "index": 0
           }
@@ -852,18 +911,18 @@
       "main": [
         [
           {
-            "node": "Wait Between Messages",
+            "node": "Message Delay",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait Between Messages": {
+    "Message Delay": {
       "main": [
         [
           {
-            "node": "Final Log",
+            "node": "Log Complete",
             "type": "main",
             "index": 0
           }
@@ -887,7 +946,7 @@
       "name": "devops"
     },
     {
-      "name": "automation"
+      "name": "dynamic"
     }
   ],
   "triggerCount": 1,

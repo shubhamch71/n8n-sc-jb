@@ -1,181 +1,279 @@
-# Job Sources Configuration Guide
+# Job Sources Guide
 
-This document explains how to add new job sources to the workflow.
+This guide explains how to discover and add new job sources to the workflow without modifying any workflow nodes.
 
-## Currently Supported ATS Types
+## Architecture Overview
 
-### Greenhouse (JSON API)
+The workflow uses a **source-agnostic design**:
 
-**API Pattern:**
-```
-https://boards-api.greenhouse.io/v1/boards/{company-board-name}/jobs
-```
+1. **Source Configuration** - All sources are defined in the `Load Source Configuration` node as a data array
+2. **Generic Handlers** - One HTTP handler per ATS type, URLs built dynamically from config
+3. **Dynamic Routing** - Switch node routes each source to the correct handler based on `ats` type
+4. **Normalized Output** - All handlers emit standardized job objects
 
-**How to find the board name:**
-1. Go to `https://boards.greenhouse.io/{company-name}`
-2. The company name in the URL is the board name
+**To add a new source: edit the configuration data only. No workflow node changes required.**
 
-**Popular Greenhouse Companies:**
-
-| Company | Board Name | URL |
-|---------|-----------|-----|
-| HashiCorp | hashicorp | boards.greenhouse.io/hashicorp |
-| GitLab | gitlab | boards.greenhouse.io/gitlab |
-| Cloudflare | cloudflare | boards.greenhouse.io/cloudflare |
-| Datadog | datadog | boards.greenhouse.io/datadog |
-| MongoDB | mongodb | boards.greenhouse.io/mongodb |
-| Elastic | elastic | boards.greenhouse.io/elastic |
-| CockroachDB | cockroachlabs | boards.greenhouse.io/cockroachlabs |
-| Stripe | stripe | boards.greenhouse.io/stripe |
-| Airbnb | airbnb | boards.greenhouse.io/airbnb |
-| Dropbox | dropbox | boards.greenhouse.io/dropbox |
-| Coinbase | coinbase | boards.greenhouse.io/coinbase |
-| Plaid | plaid | boards.greenhouse.io/plaid |
-| Snowflake | snowflake | boards.greenhouse.io/snowflake |
-| Databricks | databricks | boards.greenhouse.io/databricks |
-| Confluent | confluent | boards.greenhouse.io/confluent |
-| Grafana Labs | grafana | boards.greenhouse.io/grafana |
-| PagerDuty | pagerduty | boards.greenhouse.io/pagerduty |
-| Samsara | samsara | boards.greenhouse.io/samsara |
-| Segment | segment | boards.greenhouse.io/segment |
-| Amplitude | amplitude | boards.greenhouse.io/amplitude |
-| CircleCI | circleci | boards.greenhouse.io/circleci |
-| LaunchDarkly | launchdarkly | boards.greenhouse.io/launchdarkly |
-| New Relic | newrelic | boards.greenhouse.io/newrelic |
-| Splunk | splunk | boards.greenhouse.io/splunk |
-| Sumo Logic | sumologic | boards.greenhouse.io/sumologic |
-| Okta | okta | boards.greenhouse.io/okta |
-| Auth0 | auth0 | boards.greenhouse.io/auth0 |
-| 1Password | 1password | boards.greenhouse.io/1password |
-| Akamai | akamai | boards.greenhouse.io/akamai |
-| DigitalOcean | digitalocean | boards.greenhouse.io/digitalocean |
-| Linode | linode | boards.greenhouse.io/linode |
-| Vultr | vultr | boards.greenhouse.io/vultr |
-| Fastly | fastly | boards.greenhouse.io/fastly |
-
-### Lever (JSON API)
-
-**API Pattern:**
-```
-https://api.lever.co/v0/postings/{company-slug}?mode=json
-```
-
-**How to find the company slug:**
-1. Go to `https://jobs.lever.co/{company-slug}`
-2. The slug is in the URL
-
-**Popular Lever Companies:**
-
-| Company | Slug | URL |
-|---------|------|-----|
-| Twilio | twilio | jobs.lever.co/twilio |
-| Figma | figma | jobs.lever.co/figma |
-| Netflix | netflix | jobs.lever.co/netflix |
-| Discord | discord | jobs.lever.co/discord |
-| Notion | notion | jobs.lever.co/notion |
-| Linear | linear | jobs.lever.co/linear |
-| Vercel | vercel | jobs.lever.co/vercel |
-| Supabase | supabase | jobs.lever.co/supabase |
-| Netlify | netlify | jobs.lever.co/netlify |
-| Render | render | jobs.lever.co/render |
-| Railway | railway | jobs.lever.co/railway |
-| Fly.io | fly | jobs.lever.co/fly |
-| PostHog | posthog | jobs.lever.co/posthog |
-| Segment | segment | jobs.lever.co/segment |
-
-### RemoteOK (JSON API)
-
-**API Pattern:**
-```
-https://remoteok.com/api?tag={tag}
-```
-
-**Popular Tags:**
-- devops
-- cloud
-- sre
-- kubernetes
-- aws
-- infrastructure
-- platform
-- mlops
-
-### Ashby (JSON API)
-
-**API Pattern:**
-```
-https://api.ashbyhq.com/posting-api/job-board/{company}
-```
-
-**Popular Ashby Companies:**
-- ramp
-- notion
-- plaid
-
-## Adding Sources to the Workflow
-
-### Option 1: Simple Workflow (job-alerts-workflow.json)
-
-Add a new HTTP Request node:
-
-1. Copy an existing Greenhouse/Lever node
-2. Change the URL to the new company
-3. Connect it to the "Normalize All Jobs" node
-4. The normalizer handles standard Greenhouse/Lever formats
-
-### Option 2: Extended Workflow (job-alerts-workflow-extended.json)
-
-Edit the "Initialize Sources" code node:
+## Source Entry Schema
 
 ```javascript
-const sources = [
-  // Add new Greenhouse company
-  { type: 'greenhouse', company: 'new-company', name: 'New Company' },
-
-  // Add new Lever company
-  { type: 'lever', company: 'new-company', name: 'New Company' },
-
-  // Add new RemoteOK tag
-  { type: 'remoteok', tag: 'new-tag', name: 'RemoteOK New Tag' },
-
-  // ... existing sources
-];
+{
+  ats: 'greenhouse',       // Required: ATS type (determines handler)
+  board: 'company-slug',   // Required: Identifier in ATS URL (or 'tag' for RemoteOK)
+  company: 'Display Name', // Required: Human-readable name
+  enabled: true,           // Optional: Toggle without removing (default: true)
+  notes: 'Context'         // Optional: For your reference
+}
 ```
 
-## Testing a New Source
+## Supported ATS Types
 
-Before adding to the workflow, test the API:
+### Greenhouse
 
+**URL Pattern:** `https://boards-api.greenhouse.io/v1/boards/{board}/jobs`
+
+**Finding the board name:**
+1. Go to company careers page
+2. Look for URL like `boards.greenhouse.io/company` or `jobs.greenhouse.io/company`
+3. The path segment is the board name
+
+**Test command:**
 ```bash
-# Greenhouse
-curl -s "https://boards-api.greenhouse.io/v1/boards/COMPANY/jobs" | jq '.jobs | length'
-
-# Lever
-curl -s "https://api.lever.co/v0/postings/COMPANY?mode=json" | jq 'length'
-
-# RemoteOK
-curl -s "https://remoteok.com/api?tag=TAG" | jq 'length'
+curl -s "https://boards-api.greenhouse.io/v1/boards/BOARD_NAME/jobs" | jq '.jobs | length'
 ```
 
-## Unsupported ATS Types
+**Example companies:**
+| Company | Board Name |
+|---------|------------|
+| HashiCorp | hashicorp |
+| GitLab | gitlab |
+| Cloudflare | cloudflare |
+| Datadog | datadog |
+| Stripe | stripe |
+| MongoDB | mongodb |
+| Elastic | elastic |
+| Grafana Labs | grafana |
+| CockroachDB | cockroachlabs |
+| Databricks | databricks |
+| Confluent | confluent |
+| PagerDuty | pagerduty |
+| Snowflake | snowflake |
+| Coinbase | coinbase |
+| Airbnb | airbnb |
+| Dropbox | dropbox |
+| Plaid | plaid |
+| Segment | segment |
+| CircleCI | circleci |
+| New Relic | newrelic |
+| Splunk | splunk |
+| Okta | okta |
+| DigitalOcean | digitalocean |
+| Fastly | fastly |
 
-These require custom parsing or may block automated access:
+---
+
+### Lever
+
+**URL Pattern:** `https://api.lever.co/v0/postings/{board}?mode=json`
+
+**Finding the board name:**
+1. Go to `jobs.lever.co/company`
+2. The path segment is the board name
+
+**Test command:**
+```bash
+curl -s "https://api.lever.co/v0/postings/BOARD_NAME?mode=json" | jq 'length'
+```
+
+**Example companies:**
+| Company | Board Name |
+|---------|------------|
+| Twilio | twilio |
+| Figma | figma |
+| Netflix | netflix |
+| Discord | discord |
+| Notion | notion |
+| Vercel | vercel |
+| Supabase | supabase |
+| Netlify | netlify |
+| Render | render |
+| PostHog | posthog |
+
+---
+
+### Ashby
+
+**URL Pattern:** `https://api.ashbyhq.com/posting-api/job-board/{board}`
+
+**Finding the board name:**
+1. Go to `jobs.ashbyhq.com/company`
+2. The path segment is the board name
+
+**Test command:**
+```bash
+curl -s "https://api.ashbyhq.com/posting-api/job-board/BOARD_NAME" | jq '.jobs | length'
+```
+
+**Example companies:**
+| Company | Board Name |
+|---------|------------|
+| Ramp | ramp |
+| Plaid | plaid |
+| Linear | linear |
+
+---
+
+### SmartRecruiters
+
+**URL Pattern:** `https://api.smartrecruiters.com/v1/companies/{board}/postings`
+
+**Finding the board name:**
+1. Go to `jobs.smartrecruiters.com/Company`
+2. The company name in URL is the board (case-sensitive)
+
+**Test command:**
+```bash
+curl -s "https://api.smartrecruiters.com/v1/companies/BOARD_NAME/postings" | jq '.content | length'
+```
+
+**Example companies:**
+| Company | Board Name |
+|---------|------------|
+| Visa | Visa |
+| Bosch | BOSCH |
+| McDonald's | McDonalds |
+
+---
+
+### Workable
+
+**URL Pattern:** `https://apply.workable.com/api/v1/widget/accounts/{board}`
+
+**Finding the board name:**
+1. Go to `apply.workable.com/company`
+2. The path segment is the board name
+
+**Test command:**
+```bash
+curl -s "https://apply.workable.com/api/v1/widget/accounts/BOARD_NAME" | jq '.jobs | length'
+```
+
+**Example companies:**
+| Company | Board Name |
+|---------|------------|
+| Deel | deel |
+
+---
+
+### RemoteOK
+
+**URL Pattern:** `https://remoteok.com/api?tag={tag}`
+
+**Note:** Use `tag` instead of `board` in the config.
+
+**Test command:**
+```bash
+curl -s "https://remoteok.com/api?tag=TAG_NAME" | jq 'length'
+```
+
+**Available tags:**
+| Tag | Description |
+|-----|-------------|
+| devops | DevOps roles |
+| cloud | Cloud engineering |
+| sre | Site Reliability |
+| kubernetes | Kubernetes roles |
+| aws | AWS-focused roles |
+| infrastructure | Infrastructure |
+| platform | Platform engineering |
+
+---
+
+## Adding a New Source
+
+### Step 1: Identify the ATS
+
+Check the careers page URL:
+
+| If URL contains... | ATS Type |
+|-------------------|----------|
+| `boards.greenhouse.io` or `jobs.greenhouse.io` | greenhouse |
+| `jobs.lever.co` | lever |
+| `jobs.ashbyhq.com` | ashby |
+| `jobs.smartrecruiters.com` | smartrecruiters |
+| `apply.workable.com` | workable |
+
+### Step 2: Test the API
+
+Use the test commands above to verify:
+1. The endpoint is accessible
+2. It returns job data
+3. The board name is correct
+
+### Step 3: Add to Configuration
+
+Edit the **Load Source Configuration** node in n8n and add to the `staticData.sources` array:
+
+```javascript
+{ ats: 'greenhouse', board: 'new-company', company: 'New Company', enabled: true },
+```
+
+### Step 4: Save and Test
+
+1. Save the workflow
+2. Run manually to verify jobs are collected
+3. Check execution logs for any errors
+
+---
+
+## Adding a New ATS Type
+
+If you encounter an ATS not currently supported:
+
+1. **Add switch case:** Edit "Route by ATS Type" node to add a new output
+2. **Create HTTP handler:** Add HTTP Request node with URL pattern using `{{ $json.board }}`
+3. **Create parser:** Add Code node to normalize response to standard job format
+4. **Connect to collector:** Link parser output to "Collect Jobs" node
+
+Standard job object:
+```javascript
+{
+  job_title: "Job Title",
+  company: "Company Name",
+  location: "City, Country",
+  job_url: "https://apply-link",
+  source: "ATS Name",
+  ats: "ats-type",
+  board: "board-slug",
+  description: "...",
+  posted_at: "ISO date",
+  job_id: "..."
+}
+```
+
+---
+
+## Unsupported ATS (Require Browser Automation)
+
+These ATS types block API access and require Puppeteer/Playwright:
 
 | ATS | Status | Notes |
 |-----|--------|-------|
-| Workday | Blocked | Requires session/cookies |
+| Workday | Blocked | Session/cookie based |
 | SAP SuccessFactors | Blocked | Complex auth |
 | Oracle Taleo | Blocked | Session-based |
 | Indeed | Rate Limited | May block IPs |
-| LinkedIn | Blocked | Requires auth, aggressive blocking |
-| iCIMS | Varies | Some have JSON, some don't |
-| SmartRecruiters | Partial | Some companies expose JSON |
-| Jobvite | Partial | Company-dependent |
+| LinkedIn | Blocked | Aggressive anti-scraping |
+| iCIMS | Varies | Company-dependent |
+
+For these, consider using dedicated scraping tools outside of n8n.
+
+---
 
 ## Best Practices
 
-1. **Rate Limiting**: Don't add too many sources; aim for 20-30 max
-2. **Test First**: Always test the API endpoint before adding
-3. **Monitor**: Check execution logs for failures
-4. **Rotate**: If a source consistently fails, remove it
-5. **Respect robots.txt**: Some companies may block scraping
+1. **Test before adding** - Always verify API access with curl
+2. **Start small** - Add 5-10 sources, monitor, then expand
+3. **Use enabled flag** - Disable problematic sources without removing
+4. **Monitor logs** - Check n8n execution logs for failures
+5. **Respect rate limits** - Don't add too many sources from same domain
+6. **Keep notes** - Document why sources are added/disabled

@@ -1,344 +1,331 @@
 # DevOps Entry-Level Job Alerts - n8n Workflow
 
-A production-ready n8n automation that scrapes entry-level DevOps/Cloud/Platform engineering jobs from multiple ATS platforms and sends alerts to Telegram.
+A production-ready, source-agnostic n8n automation that dynamically scrapes entry-level DevOps/Cloud/Platform engineering jobs and sends alerts to Telegram.
 
-## Features
+## Key Design Principles
 
-- Scrapes 13+ job sources (Greenhouse, Lever, RemoteOK)
-- Smart filtering for entry-level/early-career roles
-- Deduplication across runs using n8n static data
-- Rate-limiting and anti-ban protections
-- Telegram notifications with proper batching
-- Docker and Fly.io compatible
+- **No hardcoded companies** - All sources are configured via data, not workflow nodes
+- **Generic ATS handlers** - One handler per ATS type serves all companies using that ATS
+- **Dynamic iteration** - Sources are processed via loop, not parallel static nodes
+- **Config-driven** - Add/remove sources by editing configuration only
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         n8n Job Alerts Workflow                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌──────────┐    ┌────────┐    ┌─────────────────────────────────────┐  │
-│  │  Cron    │───▶│ Config │───▶│  HTTP Request Nodes (13 sources)   │  │
-│  │ (hourly) │    │  Init  │    │  - Greenhouse APIs                  │  │
-│  └──────────┘    └────────┘    │  - Lever APIs                       │  │
-│                                │  - RemoteOK API                     │  │
-│                                └─────────────────────────────────────┘  │
-│                                              │                           │
-│                                              ▼                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                     Normalize All Jobs                           │    │
-│  │  - Standardize fields (title, company, location, url)           │    │
-│  │  - Handle different API response formats                         │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                              │                           │
-│                                              ▼                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                        Filter Jobs                               │    │
-│  │  - Match DevOps/Cloud/Platform keywords                          │    │
-│  │  - Include junior/entry-level indicators                         │    │
-│  │  - Exclude senior/lead/manager titles                            │    │
-│  │  - Filter excluded locations                                     │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                              │                           │
-│                                              ▼                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Deduplicate Jobs                            │    │
-│  │  - Hash: title + company + location                              │    │
-│  │  - Store in n8n static data                                      │    │
-│  │  - Auto-cleanup after 30 days                                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                              │                           │
-│                          ┌───────────────────┴───────────────────┐      │
-│                          ▼                                       ▼      │
-│                   [Has New Jobs?]                         [No Jobs]     │
-│                          │                                       │      │
-│                          ▼                                       ▼      │
-│  ┌─────────────────────────────────┐         ┌──────────────────────┐  │
-│  │  Format Telegram Messages       │         │  Log & Skip          │  │
-│  │  - Batch by character limit     │         └──────────────────────┘  │
-│  │  - Max 3500 chars per message   │                                    │
-│  │  - Max 7 jobs per message       │                                    │
-│  └─────────────────────────────────┘                                    │
-│                          │                                              │
-│                          ▼                                              │
-│  ┌─────────────────────────────────┐                                    │
-│  │  Send to Telegram               │                                    │
-│  │  - Sequential with delays       │                                    │
-│  │  - MarkdownV2 formatting        │                                    │
-│  └─────────────────────────────────┘                                    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Dynamic Job Alerts Workflow                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────┐    ┌─────────────────────┐    ┌─────────────────────────┐     │
+│  │  Cron    │───▶│ Load Source Config  │───▶│  Iterate Sources        │     │
+│  │ (hourly) │    │ (from static data)  │    │  (SplitInBatches)       │     │
+│  └──────────┘    └─────────────────────┘    └───────────┬─────────────┘     │
+│                                                         │                    │
+│                           ┌─────────────────────────────┼──────────┐        │
+│                           │         LOOP PER SOURCE     │          │        │
+│                           │                             ▼          │        │
+│                           │  ┌────────────────────────────────┐    │        │
+│                           │  │      Rate Limit Wait           │    │        │
+│                           │  │      (10-40 seconds)           │    │        │
+│                           │  └────────────────────────────────┘    │        │
+│                           │                             │          │        │
+│                           │                             ▼          │        │
+│                           │  ┌────────────────────────────────┐    │        │
+│                           │  │      Route by ATS Type         │    │        │
+│                           │  │      (Switch Node)             │    │        │
+│                           │  └────────────────────────────────┘    │        │
+│                           │         │   │   │   │   │   │          │        │
+│                           │         ▼   ▼   ▼   ▼   ▼   ▼          │        │
+│  ┌────────────────────────┼─────────────────────────────────────────┼──┐    │
+│  │  GENERIC ATS HANDLERS (one per ATS type, handles ALL companies)  │  │    │
+│  │                                                                   │  │    │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │  │    │
+│  │  │ Greenhouse  │ │   Lever     │ │   Ashby     │ │ SmartRecr.  │ │  │    │
+│  │  │  Handler    │ │  Handler    │ │  Handler    │ │  Handler    │ │  │    │
+│  │  │             │ │             │ │             │ │             │ │  │    │
+│  │  │ URL built   │ │ URL built   │ │ URL built   │ │ URL built   │ │  │    │
+│  │  │ from config │ │ from config │ │ from config │ │ from config │ │  │    │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │  │    │
+│  │                                                                   │  │    │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────────┐ │  │    │
+│  │  │  Workable   │ │  RemoteOK   │ │  Unsupported ATS Fallback   │ │  │    │
+│  │  │  Handler    │ │  Handler    │ │  (logs error, continues)    │ │  │    │
+│  │  └─────────────┘ └─────────────┘ └─────────────────────────────┘ │  │    │
+│  └───────────────────────────────────────────────────────────────────┘  │    │
+│                           │                             │          │        │
+│                           │                             ▼          │        │
+│                           │  ┌────────────────────────────────┐    │        │
+│                           │  │   Generic Parser per ATS       │    │        │
+│                           │  │   (normalizes to standard      │    │        │
+│                           │  │    job object format)          │    │        │
+│                           │  └────────────────────────────────┘    │        │
+│                           │                             │          │        │
+│                           │                             ▼          │        │
+│                           │  ┌────────────────────────────────┐    │        │
+│                           │  │   Collect Jobs                 │    │        │
+│                           │  │   (accumulate in static data)  │    │        │
+│                           │  └────────────────────────────────┘    │        │
+│                           │                             │          │        │
+│                           └─────────────────────────────┘          │        │
+│                                                                              │
+│                                      ▼                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         POST-LOOP PROCESSING                         │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  Filter Jobs → Deduplicate → Format Messages → Send to Telegram     │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Job Sources
+## Source Configuration Model
 
-### Currently Configured
+Each source entry follows this schema:
 
-| Source | Companies | API Type |
-|--------|-----------|----------|
-| Greenhouse | HashiCorp, GitLab, Cloudflare, Datadog, MongoDB, Elastic, CockroachDB | JSON API |
-| Lever | Twilio, Figma, Netflix | JSON API |
-| RemoteOK | DevOps, Cloud, SRE tags | JSON API |
+```json
+{
+  "ats": "greenhouse",           // ATS type (determines which handler to use)
+  "board": "company-slug",       // Identifier used in the ATS URL
+  "company": "Display Name",     // Human-readable name for alerts
+  "enabled": true,               // Toggle without removing
+  "notes": "Optional context"    // For your reference
+}
+```
 
-### Adding New Sources
+### Supported ATS Types
 
-The workflow is designed to be extensible. To add a new source:
+| ATS Type | URL Pattern | Board Identifier |
+|----------|-------------|------------------|
+| `greenhouse` | `boards-api.greenhouse.io/v1/boards/{board}/jobs` | Board name from URL |
+| `lever` | `api.lever.co/v0/postings/{board}` | Company slug |
+| `ashby` | `api.ashbyhq.com/posting-api/job-board/{board}` | Board name |
+| `smartrecruiters` | `api.smartrecruiters.com/v1/companies/{board}/postings` | Company ID |
+| `workable` | `apply.workable.com/api/v1/widget/accounts/{board}` | Account slug |
+| `remoteok` | `remoteok.com/api?tag={tag}` | Tag name (use `tag` instead of `board`) |
 
-1. **Greenhouse Companies**: Change the board name in the URL
-   ```
-   https://boards-api.greenhouse.io/v1/boards/{company-name}/jobs
-   ```
+## How to Add New Sources
 
-2. **Lever Companies**: Change the company slug
-   ```
-   https://api.lever.co/v0/postings/{company-slug}?mode=json
-   ```
+### Step 1: Identify the ATS
 
-3. **Other ATS**: Add HTTP Request nodes with appropriate parsing in the "Normalize All Jobs" code node
+Visit the company's careers page and check the URL:
 
-## Setup Guide
+| URL Pattern | ATS Type |
+|-------------|----------|
+| `boards.greenhouse.io/company` | greenhouse |
+| `jobs.lever.co/company` | lever |
+| `jobs.ashbyhq.com/company` | ashby |
+| `jobs.smartrecruiters.com/Company` | smartrecruiters |
+| `apply.workable.com/company` | workable |
 
-### Step 1: Create a Telegram Bot
+### Step 2: Find the Board Identifier
 
-1. Open Telegram and search for `@BotFather`
-2. Send `/newbot` and follow the prompts
-3. Choose a name (e.g., "DevOps Job Alerts")
-4. Choose a username (e.g., "devops_jobs_alert_bot")
-5. **Save the bot token** - looks like: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`
+The identifier is usually in the URL path:
+- `boards.greenhouse.io/hashicorp` → board = `hashicorp`
+- `jobs.lever.co/twilio` → board = `twilio`
 
-### Step 2: Get Your Chat ID
+### Step 3: Test the API Endpoint
 
-**Option A: Personal Chat ID**
-1. Search for `@userinfobot` or `@getidsbot` on Telegram
-2. Start a chat and it will show your user ID
-3. This is your `TELEGRAM_CHAT_ID`
+```bash
+# Greenhouse
+curl -s "https://boards-api.greenhouse.io/v1/boards/NEW_COMPANY/jobs" | jq '.jobs | length'
 
-**Option B: Group Chat ID**
-1. Add your bot to the group
-2. Add `@getidsbot` to the group temporarily
-3. The bot will show the group ID (starts with `-`)
-4. Remove `@getidsbot` after getting the ID
+# Lever
+curl -s "https://api.lever.co/v0/postings/NEW_COMPANY?mode=json" | jq 'length'
 
-### Step 3: Set Up Environment Variables
+# Ashby
+curl -s "https://api.ashbyhq.com/posting-api/job-board/NEW_COMPANY" | jq '.jobs | length'
+```
+
+### Step 4: Add to Configuration
+
+Edit the `Load Source Configuration` node and add:
+
+```javascript
+{ ats: 'greenhouse', board: 'new-company', company: 'New Company', enabled: true },
+```
+
+**No other workflow changes required.**
+
+## Example Source Configurations
+
+### Greenhouse Companies
+
+```json
+{ "ats": "greenhouse", "board": "hashicorp", "company": "HashiCorp", "enabled": true }
+{ "ats": "greenhouse", "board": "gitlab", "company": "GitLab", "enabled": true }
+{ "ats": "greenhouse", "board": "cloudflare", "company": "Cloudflare", "enabled": true }
+{ "ats": "greenhouse", "board": "datadog", "company": "Datadog", "enabled": true }
+{ "ats": "greenhouse", "board": "stripe", "company": "Stripe", "enabled": true }
+```
+
+### Lever Companies
+
+```json
+{ "ats": "lever", "board": "twilio", "company": "Twilio", "enabled": true }
+{ "ats": "lever", "board": "discord", "company": "Discord", "enabled": true }
+{ "ats": "lever", "board": "vercel", "company": "Vercel", "enabled": true }
+```
+
+### Ashby Companies
+
+```json
+{ "ats": "ashby", "board": "ramp", "company": "Ramp", "enabled": true }
+{ "ats": "ashby", "board": "plaid", "company": "Plaid", "enabled": true }
+```
+
+### SmartRecruiters Companies
+
+```json
+{ "ats": "smartrecruiters", "board": "Visa", "company": "Visa", "enabled": true }
+{ "ats": "smartrecruiters", "board": "BOSCH", "company": "Bosch", "enabled": true }
+```
+
+### RemoteOK Tags
+
+```json
+{ "ats": "remoteok", "tag": "devops", "company": "RemoteOK", "enabled": true }
+{ "ats": "remoteok", "tag": "kubernetes", "company": "RemoteOK", "enabled": true }
+```
+
+## Quick Start
+
+### 1. Configure Environment
 
 ```bash
 cp .env.example .env
+# Edit .env with your Telegram bot token and chat ID
 ```
 
-Edit `.env` with your values:
-```env
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-TELEGRAM_CHAT_ID=987654321
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=your-secure-password
-```
-
-### Step 4: Run with Docker
+### 2. Test Telegram Setup
 
 ```bash
-# Start n8n
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f n8n
-
-# Access n8n UI
-open http://localhost:5678
+./test-telegram.sh
 ```
 
-### Step 5: Import the Workflow
-
-1. Open n8n at `http://localhost:5678`
-2. Log in with your credentials
-3. Go to **Workflows** > **Import from File**
-4. Select `job-alerts-workflow.json`
-5. Click **Import**
-
-### Step 6: Configure Telegram Credentials
-
-1. In the workflow, click on the **"Send to Telegram"** node
-2. Click on **Credentials** > **Create New**
-3. Enter your bot token
-4. Click **Save**
-
-### Step 7: Activate the Workflow
-
-1. Toggle the workflow to **Active** (top right)
-2. The workflow will now run every hour
-
-## Fly.io Deployment
-
-### Prerequisites
-
-1. Install the Fly CLI: https://fly.io/docs/hands-on/install-flyctl/
-2. Sign up for Fly.io (free tier available)
-
-### Deployment Steps
+### 3. Start n8n
 
 ```bash
-# Login to Fly.io
-fly auth login
-
-# Create the app (first time only)
-fly apps create n8n-job-alerts
-
-# Create persistent volume for data
-fly volumes create n8n_data --size 1 --region iad
-
-# Set secrets (environment variables)
-fly secrets set TELEGRAM_BOT_TOKEN="your-bot-token"
-fly secrets set TELEGRAM_CHAT_ID="your-chat-id"
-fly secrets set N8N_BASIC_AUTH_USER="admin"
-fly secrets set N8N_BASIC_AUTH_PASSWORD="your-secure-password"
-fly secrets set WEBHOOK_URL="https://n8n-job-alerts.fly.dev/"
-
-# Deploy
-fly deploy
-
-# Check status
-fly status
-
-# View logs
-fly logs
+make start
+# Or: docker-compose up -d
 ```
 
-### Access Your Deployment
+### 4. Import Workflow
 
-Your n8n instance will be available at:
-```
-https://n8n-job-alerts.fly.dev
-```
+1. Open `http://localhost:5678`
+2. Go to **Workflows** → **Import from File**
+3. Select `job-alerts-workflow.json`
+4. Configure Telegram credentials
+5. Activate the workflow
 
 ## Filtering Logic
 
-### Included Roles (Title Keywords)
-- DevOps
-- Cloud Engineer
-- Platform Engineer
-- Kubernetes
+### Included Roles (by title keywords)
+- DevOps, Cloud Engineer, Platform Engineer
+- Kubernetes, SRE, Infrastructure
 - MLOps, AIOps, LLMOps
-- Cloud Infrastructure
-- ML Infrastructure
-- Site Reliability (SRE)
+- Cloud Infrastructure, ML Infrastructure
 
 ### Seniority Detection
 
-**Included if title contains:**
-- Junior, Entry Level, Associate
-- Graduate, Trainee, Intern
+**Included automatically:**
+- Titles with: Junior, Entry Level, Associate, Graduate, Trainee, Intern
+- Descriptions with: "0-2 years", "1-3 years", "early career"
 
-**Included if description mentions:**
-- "0-1 years", "1-2 years", "1-3 years"
-- "early career", "new graduate", "fresher"
-
-**Excluded if title contains:**
-- Senior, Staff, Principal
-- Lead, Manager, Architect, Director
-
-**Excluded if description mentions:**
-- "4+ years", "5+ years", etc.
-- "extensive experience", "senior-level"
+**Excluded automatically:**
+- Titles with: Senior, Staff, Principal, Lead, Manager, Architect
+- Descriptions with: "4+ years", "extensive experience"
 
 ### Location Filtering
+- **Excluded:** Pakistan, Bangladesh, Sri Lanka, Syria
+- **Included:** All other regions globally
 
-**Excluded locations:**
-- Pakistan, Bangladesh, Sri Lanka, Syria
+## Deduplication
 
-**Included locations:**
-- All other regions globally
-- Remote positions
+Jobs are deduplicated using a hash of:
+- Job title (normalized)
+- Company name (normalized)
+- Location (normalized)
+
+Hashes are stored in n8n static data with 30-day TTL.
+
+## Rate Limiting & Safety
+
+- 10-40 second random delay between sources
+- Sequential processing (one source at a time)
+- Continue on failure for individual sources
+- User-Agent rotation
+
+## Deployment
+
+### Docker (Local)
+
+```bash
+docker-compose up -d
+```
+
+### Fly.io
+
+```bash
+fly auth login
+fly apps create n8n-job-alerts
+fly volumes create n8n_data --size 1 --region iad
+fly secrets set TELEGRAM_BOT_TOKEN="your-token"
+fly secrets set TELEGRAM_CHAT_ID="your-chat-id"
+fly secrets set N8N_BASIC_AUTH_USER="admin"
+fly secrets set N8N_BASIC_AUTH_PASSWORD="your-password"
+fly deploy
+```
+
+## Adding a New ATS Type
+
+To support a new ATS that's not currently handled:
+
+1. Add a new case to the **Route by ATS Type** switch node
+2. Create an HTTP Request node with the URL pattern (using `{{ $json.board }}` for dynamic substitution)
+3. Create a parser node that normalizes responses to the standard job format
+4. Connect to the **Collect Jobs** node
+
+Standard job object format:
+
+```javascript
+{
+  job_title: "DevOps Engineer",
+  company: "Company Name",
+  location: "City, Country",
+  job_url: "https://...",
+  source: "ATS Name",
+  ats: "ats-type",
+  board: "company-slug",
+  description: "...",
+  posted_at: "2026-01-31T00:00:00Z",
+  job_id: "..."
+}
+```
 
 ## Troubleshooting
 
-### No Jobs Being Sent
+### No jobs being collected
+1. Check workflow execution logs in n8n
+2. Verify API endpoints are accessible: `make test`
+3. Check if sources are enabled in configuration
 
-1. **Check workflow execution**: Go to Executions tab in n8n
-2. **Verify API responses**: Check if HTTP Request nodes return data
-3. **Check filter logic**: May need to adjust keyword matching
-4. **Deduplication**: On first run, all jobs are "new"; subsequent runs only send new ones
+### Telegram errors
+1. Verify bot token: `./test-telegram.sh`
+2. Ensure bot has access to the chat/group
+3. Check chat ID format (groups start with `-`)
 
-### Telegram Errors
+### Rate limiting issues
+1. Reduce number of enabled sources
+2. Increase wait time in Rate Limit Wait node
+3. Disable problematic sources temporarily
 
-1. **Invalid token**: Verify bot token is correct
-2. **Chat not found**: Ensure chat ID is correct and bot has access
-3. **Message too long**: Workflow already handles this, but check formatting
+## Files
 
-### Rate Limiting
-
-The workflow includes built-in protections:
-- Random wait (10-40s) before scraping
-- Sequential HTTP requests
-- Continue on failure for individual sources
-
-### Viewing Logs
-
-```bash
-# Docker
-docker-compose logs -f n8n
-
-# Fly.io
-fly logs
-```
-
-### Resetting Deduplication
-
-To reset seen jobs and get all jobs again:
-
-1. Stop the workflow
-2. In the "Deduplicate Jobs" code node, add temporarily:
-   ```javascript
-   staticData.seenJobHashes = {};
-   ```
-3. Run once manually
-4. Remove the line and reactivate
-
-## Extending the Workflow
-
-### Adding More Greenhouse Companies
-
-Find company board names at `https://boards.greenhouse.io/{company}`
-
-Common examples:
-- `stripe`, `airbnb`, `dropbox`, `coinbase`, `plaid`
-- `snowflake`, `databricks`, `confluent`
-
-### Adding More Lever Companies
-
-Find company slugs at `https://jobs.lever.co/{company}`
-
-Common examples:
-- `discord`, `notion`, `linear`, `vercel`
-
-### Adding Indeed RSS (with caution)
-
-```
-https://www.indeed.com/rss?q=devops+junior&l=remote
-```
-
-Note: Indeed may block automated access.
-
-### Custom ATS Integration
-
-For company career pages with unique formats:
-1. Add HTTP Request node
-2. Add HTML Extract node if needed
-3. Modify "Normalize All Jobs" to parse the format
-
-## Performance Considerations
-
-- **Memory**: ~512MB sufficient for normal operation
-- **Storage**: SQLite database grows with execution history
-- **Network**: ~50-100KB per run (API responses)
-- **Execution time**: ~2-5 minutes per run
-
-## Security Notes
-
-1. Never commit `.env` files
-2. Use strong passwords for n8n basic auth
-3. Keep bot token secret
-4. Consider IP restrictions on Fly.io
-
-## License
-
-This workflow is provided as-is for personal use. Respect the terms of service of the job boards and ATS platforms being scraped.
+| File | Purpose |
+|------|---------|
+| `job-alerts-workflow.json` | Main workflow (import this) |
+| `sources.json` | Reference source configuration |
+| `docker-compose.yml` | Docker setup |
+| `fly.toml` | Fly.io deployment |
+| `.env.example` | Environment template |
+| `test-telegram.sh` | Telegram test script |

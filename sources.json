@@ -1,0 +1,259 @@
+{
+  "$schema": "./sources-schema.json",
+  "description": "Job sources configuration - edit this file to add/remove sources WITHOUT modifying workflow nodes",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-31",
+
+  "sources": [
+    {
+      "ats": "greenhouse",
+      "board": "hashicorp",
+      "company": "HashiCorp",
+      "enabled": true,
+      "notes": "Terraform, Vault, Consul maker"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "gitlab",
+      "company": "GitLab",
+      "enabled": true,
+      "notes": "DevOps platform"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "cloudflare",
+      "company": "Cloudflare",
+      "enabled": true,
+      "notes": "CDN and edge computing"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "datadog",
+      "company": "Datadog",
+      "enabled": true,
+      "notes": "Monitoring and observability"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "mongodb",
+      "company": "MongoDB",
+      "enabled": true,
+      "notes": "Database company"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "elastic",
+      "company": "Elastic",
+      "enabled": true,
+      "notes": "Elasticsearch maker"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "grafana",
+      "company": "Grafana Labs",
+      "enabled": true,
+      "notes": "Observability platform"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "cockroachlabs",
+      "company": "CockroachDB",
+      "enabled": true,
+      "notes": "Distributed SQL database"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "stripe",
+      "company": "Stripe",
+      "enabled": true,
+      "notes": "Payment infrastructure"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "databricks",
+      "company": "Databricks",
+      "enabled": true,
+      "notes": "Data and AI platform"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "confluent",
+      "company": "Confluent",
+      "enabled": true,
+      "notes": "Apache Kafka company"
+    },
+    {
+      "ats": "greenhouse",
+      "board": "pagerduty",
+      "company": "PagerDuty",
+      "enabled": true,
+      "notes": "Incident management"
+    },
+    {
+      "ats": "lever",
+      "board": "twilio",
+      "company": "Twilio",
+      "enabled": true,
+      "notes": "Communication APIs"
+    },
+    {
+      "ats": "lever",
+      "board": "figma",
+      "company": "Figma",
+      "enabled": true,
+      "notes": "Design platform"
+    },
+    {
+      "ats": "lever",
+      "board": "netflix",
+      "company": "Netflix",
+      "enabled": true,
+      "notes": "Streaming platform"
+    },
+    {
+      "ats": "lever",
+      "board": "discord",
+      "company": "Discord",
+      "enabled": true,
+      "notes": "Communication platform"
+    },
+    {
+      "ats": "lever",
+      "board": "notion",
+      "company": "Notion",
+      "enabled": true,
+      "notes": "Productivity platform"
+    },
+    {
+      "ats": "lever",
+      "board": "vercel",
+      "company": "Vercel",
+      "enabled": true,
+      "notes": "Frontend cloud platform"
+    },
+    {
+      "ats": "lever",
+      "board": "supabase",
+      "company": "Supabase",
+      "enabled": true,
+      "notes": "Open source Firebase alternative"
+    },
+    {
+      "ats": "ashby",
+      "board": "ramp",
+      "company": "Ramp",
+      "enabled": true,
+      "notes": "Corporate cards and expense management"
+    },
+    {
+      "ats": "ashby",
+      "board": "plaid",
+      "company": "Plaid",
+      "enabled": true,
+      "notes": "Financial data platform"
+    },
+    {
+      "ats": "smartrecruiters",
+      "board": "Visa",
+      "company": "Visa",
+      "enabled": true,
+      "notes": "Payment network"
+    },
+    {
+      "ats": "smartrecruiters",
+      "board": "BOSCH",
+      "company": "Bosch",
+      "enabled": true,
+      "notes": "Technology company"
+    },
+    {
+      "ats": "workable",
+      "board": "deel",
+      "company": "Deel",
+      "enabled": true,
+      "notes": "Global payroll platform"
+    },
+    {
+      "ats": "remoteok",
+      "tag": "devops",
+      "company": "RemoteOK",
+      "enabled": true,
+      "notes": "Remote job board - DevOps tag"
+    },
+    {
+      "ats": "remoteok",
+      "tag": "cloud",
+      "company": "RemoteOK",
+      "enabled": true,
+      "notes": "Remote job board - Cloud tag"
+    },
+    {
+      "ats": "remoteok",
+      "tag": "sre",
+      "company": "RemoteOK",
+      "enabled": true,
+      "notes": "Remote job board - SRE tag"
+    },
+    {
+      "ats": "remoteok",
+      "tag": "kubernetes",
+      "company": "RemoteOK",
+      "enabled": true,
+      "notes": "Remote job board - Kubernetes tag"
+    },
+    {
+      "ats": "linkedin",
+      "keywords": "devops entry level",
+      "company": "LinkedIn",
+      "enabled": false,
+      "notes": "DISABLED - LinkedIn has aggressive rate limiting. Use as fallback only."
+    }
+  ],
+
+  "ats_endpoints": {
+    "greenhouse": {
+      "urlTemplate": "https://boards-api.greenhouse.io/v1/boards/{board}/jobs",
+      "responseFormat": "json",
+      "jobsPath": "jobs"
+    },
+    "lever": {
+      "urlTemplate": "https://api.lever.co/v0/postings/{board}?mode=json",
+      "responseFormat": "json",
+      "jobsPath": "root"
+    },
+    "ashby": {
+      "urlTemplate": "https://api.ashbyhq.com/posting-api/job-board/{board}",
+      "responseFormat": "json",
+      "jobsPath": "jobs"
+    },
+    "smartrecruiters": {
+      "urlTemplate": "https://api.smartrecruiters.com/v1/companies/{board}/postings",
+      "responseFormat": "json",
+      "jobsPath": "content"
+    },
+    "workable": {
+      "urlTemplate": "https://apply.workable.com/api/v1/widget/accounts/{board}",
+      "responseFormat": "json",
+      "jobsPath": "jobs"
+    },
+    "remoteok": {
+      "urlTemplate": "https://remoteok.com/api?tag={tag}",
+      "responseFormat": "json",
+      "jobsPath": "root"
+    }
+  },
+
+  "howToAddSource": {
+    "step1": "Find the company's career page",
+    "step2": "Identify the ATS they use (check URL patterns below)",
+    "step3": "Find the board/company identifier",
+    "step4": "Add a new entry to the 'sources' array above",
+    "urlPatterns": {
+      "greenhouse": "boards.greenhouse.io/{board} or jobs.greenhouse.io/{board}",
+      "lever": "jobs.lever.co/{board}",
+      "ashby": "jobs.ashbyhq.com/{board}",
+      "smartrecruiters": "jobs.smartrecruiters.com/{board}",
+      "workable": "apply.workable.com/{board}"
+    }
+  }
+}
