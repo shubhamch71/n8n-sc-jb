@@ -71,41 +71,72 @@ Access at: http://localhost:5678
    - Name it exactly: `Telegram Bot`
    - Paste your bot token
 
-## 4. Fly.io Deployment (Manual)
+## 4. Fly.io First-Time Setup (One-Time)
+
+Run these commands **once** before using CI/CD:
+
+### Step 1: Create App
 
 ```bash
-# Login
 fly auth login
-
-# Create app (first time)
 fly apps create n8n-job-alerts
+```
 
-# Set secrets
-make secrets
-# Or manually:
-fly secrets set TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=xxx ...
+### Step 2: Create Persistent Volume
 
-# Deploy
-make deploy
+```bash
+fly volumes create n8n_data --region iad --size 1 --app n8n-job-alerts
+```
+
+This creates storage on Fly.io cloud (not locally) for:
+- SQLite database
+- n8n credentials
+- Workflow executions
+- Seen job hashes
+
+### Step 3: Set Secrets
+
+```bash
+fly secrets set \
+  TELEGRAM_BOT_TOKEN="your-bot-token" \
+  TELEGRAM_CHAT_ID="your-chat-id" \
+  N8N_BASIC_AUTH_USER="admin" \
+  N8N_BASIC_AUTH_PASSWORD="your-secure-password" \
+  --app n8n-job-alerts
+```
+
+Optional secrets:
+```bash
+fly secrets set \
+  TAVILY_API_KEY="xxx" \
+  GEMINI_API_KEY="xxx" \
+  RAPIDAPI_KEY="xxx" \
+  SERPAPI_KEY="xxx" \
+  --app n8n-job-alerts
+```
+
+### Step 4: First Deploy
+
+```bash
+fly deploy
+```
+
+### Step 5: Get Deploy Token for GitHub
+
+```bash
+fly tokens create deploy -x 999999h
+# Copy this token for GitHub Actions
 ```
 
 ## 5. CI/CD Deployment (GitHub Actions)
 
-Automatic deployment on push to `main`:
+After first-time setup, pushes to `main` auto-deploy:
 
 ```
 git push main → GitHub Actions → fly deploy → Fly.io
 ```
 
-### Step 1: Get Fly.io API Token
-
-```bash
-fly auth login
-fly tokens create deploy -x 999999h
-# Copy the token output
-```
-
-### Step 2: Configure GitHub Secrets
+### Configure GitHub Secrets
 
 Go to: **Repository → Settings → Secrets and variables → Actions**
 
