@@ -415,10 +415,11 @@ System automatically sends alerts when:
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
-| Company Discovery | Weekly (Sunday 2 AM UTC) | Find new startups to track |
 | Job Discovery | Bi-Hourly (Every 2 hours) | Scrape jobs and send alerts |
-| API Usage Reset | Monthly (1st, 12 AM UTC) | Reset usage counters |
-| Usage Dashboard | On-demand (/usage command) | Check API usage stats |
+| Company Discovery | Weekly (Sunday 2 AM UTC) | Find new startups to track |
+| Health Monitor | Daily (8 AM UTC) | System heartbeat + alerts |
+| Bot Commands | On-demand (Telegram) | /usage, /pause, /resume, /status |
+| API Usage Reset | Automatic (monthly) | Reset usage counters on 1st |
 
 ---
 
@@ -574,17 +575,20 @@ N8N_BASIC_AUTH_PASSWORD=your-password
 
 ```
 n8n/
-├── workflows/
-│   ├── company-discovery.json      # Weekly: Tavily + Gemini
-│   ├── job-discovery.json          # Bi-Hourly: ATS + APIs + Telegram
-│   └── usage-dashboard.json        # On-demand: /usage command handler
+├── job-alerts-workflow.json        # Bi-Hourly: ATS + APIs + Telegram
+├── company-discovery-workflow.json # Weekly: Tavily + Gemini
+├── bot-commands-workflow.json      # On-demand: /usage, /pause, /resume, /status
+├── health-monitor-workflow.json    # Daily: Heartbeat + alerts
 ├── docker-compose.yml
 ├── fly.toml
 ├── .env.example
 ├── README.md
 ├── ARCHITECTURE.md                 # This file
+├── SETUP.md                        # Quick setup guide
 ├── SOURCES.md                      # How to add sources manually
-└── test-telegram.sh
+├── sources.json                    # Reference source configuration
+├── test-telegram.sh
+└── Makefile
 ```
 
 ---
@@ -659,3 +663,179 @@ The system automatically tracks and reports:
 - Days until reset
 - Monthly statistics
 - Active/Standby/Exhausted status
+
+---
+
+## Health Monitoring (Heartbeat)
+
+The system includes daily health monitoring to ensure job discovery is working correctly.
+
+### Daily Heartbeat (8 AM UTC)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    HEALTHY HEARTBEAT                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  💚 *System Healthy*                                            │
+│                                                                  │
+│  *Last 24 Hours*                                                │
+│  Jobs discovered: 47                                             │
+│  Companies tracked: 35                                           │
+│                                                                  │
+│  *Active APIs*                                                  │
+│  • JSearch                                                       │
+│  • SerpApi                                                       │
+│  • Direct ATS                                                    │
+│                                                                  │
+│  *System Info*                                                  │
+│  Filter version: v1.0                                            │
+│  Last run: 2026-01-31T06:00:00Z                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Alert Condition
+
+If NO jobs found AND no workflow activity in 24 hours:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ALERT MESSAGE                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ⚠️ *Job System Inactive*                                       │
+│                                                                  │
+│  Warning: No job activity detected in the last 24 hours.        │
+│                                                                  │
+│  Possible Issues:                                                │
+│  • Workflow may be disabled                                      │
+│  • API credentials may have expired                              │
+│  • Rate limits may have been hit                                │
+│                                                                  │
+│  Please check the n8n dashboard.                                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Filter Versioning
+
+All jobs and logs include a filter version identifier to track which filtering rules were applied.
+
+### Current Version: `v1.0`
+
+```javascript
+// Attached to every job object
+{
+  job_title: "Junior DevOps Engineer",
+  company: "Modal",
+  // ... other fields
+  filter_version: "v1.0"
+}
+```
+
+### Purpose
+
+- Track which filter rules produced each job
+- Debug filtering issues retroactively
+- Compare effectiveness of different filter versions
+- Gradual rollout of filter changes
+
+### Updating Filter Version
+
+When modifying filter rules in `Filter Jobs` node:
+1. Increment version (e.g., `v1.0` → `v1.1`)
+2. Document changes in this file
+3. Filter version appears in logs and job metadata
+
+---
+
+## Kill Switches (Production Safety)
+
+Environment-based feature flags for controlling system behavior without code changes.
+
+### Environment Variables
+
+| Variable | Default | Effect when `false` |
+|----------|---------|---------------------|
+| `ENABLE_COMPANY_DISCOVERY` | `true` | Skip weekly company discovery workflow |
+| `ENABLE_AGGREGATOR_APIS` | `true` | Use only direct ATS scraping (no JSearch/SerpApi) |
+| `ENABLE_NOTIFICATIONS` | `true` | Scrape continues silently, no Telegram messages |
+
+### Telegram Commands
+
+| Command | Action |
+|---------|--------|
+| `/pause` | Disable notifications at runtime |
+| `/resume` | Re-enable notifications |
+| `/status` | Show current switch states |
+
+### Behavior Matrix
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         KILL SWITCH EFFECTS                                   │
+├────────────────────────────┬─────────────────────────────────────────────────┤
+│ Configuration              │ Behavior                                        │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│ All enabled (default)      │ Full system: discovery + ATS + APIs + alerts   │
+│ ENABLE_AGGREGATOR_APIS=off │ ATS scraping only (free, unlimited)            │
+│ ENABLE_NOTIFICATIONS=off   │ Scrape and collect, but no Telegram messages   │
+│ ENABLE_COMPANY_DISCOVERY=off│ Use only manually configured companies        │
+│ /pause command             │ Runtime pause (persists until /resume)         │
+└────────────────────────────┴─────────────────────────────────────────────────┘
+```
+
+### Use Cases
+
+1. **Cost Control**: Disable aggregators to stay within free tier
+2. **Silent Mode**: Disable notifications during maintenance
+3. **Manual Only**: Disable discovery for curated company list
+4. **Emergency Stop**: Use /pause for immediate notification halt
+
+---
+
+## Implementation Status
+
+### Workflows
+
+| Workflow | File | Status |
+|----------|------|--------|
+| Job Discovery | `job-alerts-workflow.json` | ✅ Implemented |
+| Company Discovery | `company-discovery-workflow.json` | ✅ Implemented |
+| Bot Commands | `bot-commands-workflow.json` | ✅ Implemented |
+| Health Monitor | `health-monitor-workflow.json` | ✅ Implemented |
+
+### Features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Direct ATS Scraping (Layer A) | ✅ | Greenhouse, Lever, Ashby, SmartRecruiters, Workable, RemoteOK |
+| Aggregator APIs (Layer B) | ✅ | JSearch (primary), SerpApi available |
+| Deduplication (Layer C) | ✅ | Hash-based, 30-day TTL |
+| Filtering (Layer D) | ✅ | Relevance, seniority, location, role-type |
+| Company Discovery | ✅ | Tavily search + Gemini extraction |
+| Telegram Output | ✅ | Smart batching, MarkdownV2 |
+| Health Monitoring | ✅ | Daily heartbeat + alerts |
+| Filter Versioning | ✅ | v1.0 attached to jobs/logs |
+| Kill Switches | ✅ | Environment flags + Telegram commands |
+| API Usage Tracking | ✅ | /usage command |
+
+### Per-Job Metadata
+
+Each job now includes:
+```javascript
+{
+  // Standard fields
+  job_title, company, location, job_url, source, ats, board, description, posted_at, job_id,
+
+  // Layer tracking
+  discovery_layer: "direct_ats" | "aggregator_api",
+  discovered_via: "greenhouse" | "lever" | "jsearch" | "serpapi" | ...,
+
+  // Version tracking
+  filter_version: "v1.0"
+}
+```

@@ -1,0 +1,498 @@
+{
+  "name": "Company Discovery (Weekly)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "trigger-weekly",
+      "name": "Weekly Trigger (Sunday 2 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// CHECK KILL SWITCH - Skip if company discovery is disabled\n// =============================================================================\nconst enableDiscovery = $env.ENABLE_COMPANY_DISCOVERY !== 'false';\n\nif (!enableDiscovery) {\n  console.log('Company Discovery is DISABLED via ENABLE_COMPANY_DISCOVERY flag');\n  return [];\n}\n\nconsole.log('Company Discovery is ENABLED - proceeding with discovery');\nreturn [{ json: { enabled: true } }];"
+      },
+      "id": "check-kill-switch",
+      "name": "Check Kill Switch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// SEARCH QUERIES - Company Discovery Queries\n// =============================================================================\nconst queries = [\n  // DevOps/Infrastructure Startups\n  'DevOps startups founded 2024 2025 2026 hiring',\n  'infrastructure automation startups 2025 2026',\n  'CI/CD platform companies 2025 2026 careers',\n  'GitOps startups 2024 2025 2026',\n  'developer tools startups Series A B 2025 2026',\n  \n  // MLOps/AI Infrastructure\n  'MLOps startups 2024 2025 2026 hiring',\n  'AI infrastructure companies 2025 2026 careers',\n  'ML platform startups 2024 2025 2026',\n  'LLMOps companies 2025 2026',\n  'AI developer tools startups 2025 2026',\n  \n  // Cloud Native/Platform Engineering\n  'cloud native startups 2024 2025 2026 hiring',\n  'Kubernetes platform startups 2025 2026',\n  'platform engineering companies 2024 2025 2026',\n  'internal developer platform startups 2025 2026',\n  \n  // Observability/Monitoring\n  'observability startups 2024 2025 2026',\n  'monitoring platform companies 2025 2026 careers'\n];\n\n// Shuffle and pick a subset to stay within quota\nconst shuffled = queries.sort(() => Math.random() - 0.5);\nconst selectedQueries = shuffled.slice(0, 10); // Max 10 queries per run\n\nconsole.log(`Selected ${selectedQueries.length} search queries for this run`);\n\nreturn selectedQueries.map((query, index) => ({ \n  json: { \n    query, \n    index,\n    total: selectedQueries.length \n  } \n}));"
+      },
+      "id": "load-queries",
+      "name": "Load Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "iterate-queries",
+      "name": "Iterate Queries",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 2000) + 1000 }}",
+        "unit": "milliseconds"
+      },
+      "id": "rate-limit-wait",
+      "name": "Rate Limit Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"api_key\": \"{{ $env.TAVILY_API_KEY }}\",\n  \"query\": \"{{ $json.query }}\",\n  \"search_depth\": \"basic\",\n  \"include_answer\": false,\n  \"include_raw_content\": false,\n  \"max_results\": 10\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "tavily-search",
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// UPDATE TAVILY USAGE TRACKING\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Initialize API usage tracking\nif (!staticData.apiUsage) {\n  staticData.apiUsage = {\n    tavily: { used_this_month: 0, limit: 1000, reset_date: null },\n    gemini: { used_today: 0, limit_daily: 1000 }\n  };\n}\n\n// Check for monthly reset\nconst now = new Date();\nconst resetDate = staticData.apiUsage.tavily.reset_date;\nif (!resetDate || new Date(resetDate).getMonth() !== now.getMonth()) {\n  staticData.apiUsage.tavily.used_this_month = 0;\n  staticData.apiUsage.tavily.reset_date = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();\n}\n\n// Increment usage\nstaticData.apiUsage.tavily.used_this_month++;\nstaticData.apiUsage.tavily.last_used = now.toISOString();\n\n// Pass through search results\nconst results = input.results || [];\nconsole.log(`Tavily returned ${results.length} results. Usage: ${staticData.apiUsage.tavily.used_this_month}/${staticData.apiUsage.tavily.limit}`);\n\nreturn [{ json: { results, query: $('Iterate Queries').first().json.query } }];"
+      },
+      "id": "track-tavily-usage",
+      "name": "Track Tavily Usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// PREPARE GEMINI PROMPT - Extract company info from search results\n// =============================================================================\nconst input = $input.first().json;\nconst results = input.results || [];\n\nif (results.length === 0) {\n  console.log('No results to process');\n  return [{ json: { companies: [], skip: true } }];\n}\n\n// Create a summary of search results for Gemini\nconst resultsSummary = results.map((r, i) => \n  `${i+1}. Title: ${r.title}\\nURL: ${r.url}\\nContent: ${(r.content || '').substring(0, 500)}`\n).join('\\n\\n');\n\nconst prompt = `Analyze these search results and extract company information. For each tech company mentioned that appears to be hiring in DevOps, MLOps, Platform Engineering, or Cloud Infrastructure:\n\nSearch Results:\n${resultsSummary}\n\nFor each company found, provide a JSON array with objects containing:\n- company: Company name\n- careers_url: Their careers/jobs page URL (if found, otherwise null)\n- ats: Their ATS platform if identifiable from URL (greenhouse, lever, ashby, smartrecruiters, workable, or null)\n- board: The company slug/identifier used in their ATS URL (or null)\n- category: One of: DevOps, MLOps, Platform Engineering, Cloud Native, AI Infrastructure, Observability\n\nOnly include companies that appear to be actively hiring tech talent.\nRespond ONLY with a valid JSON array, no other text.`;\n\nreturn [{ json: { prompt, query: input.query } }];"
+      },
+      "id": "prepare-gemini-prompt",
+      "name": "Prepare Gemini Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-results",
+      "name": "Has Results?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": {{ JSON.stringify($json.prompt) }}\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 2048\n  }\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "gemini-extract",
+      "name": "Gemini Extract Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// PARSE GEMINI RESPONSE AND TRACK USAGE\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Update Gemini usage\nif (!staticData.apiUsage) {\n  staticData.apiUsage = { gemini: { used_today: 0, limit_daily: 1000 } };\n}\n\n// Check for daily reset\nconst now = new Date();\nconst lastUsed = staticData.apiUsage.gemini.last_used;\nif (lastUsed) {\n  const lastDate = new Date(lastUsed);\n  if (lastDate.getDate() !== now.getDate()) {\n    staticData.apiUsage.gemini.used_today = 0;\n  }\n}\n\nstaticData.apiUsage.gemini.used_today++;\nstaticData.apiUsage.gemini.last_used = now.toISOString();\n\nlet companies = [];\n\ntry {\n  // Extract text from Gemini response\n  const responseText = input.candidates?.[0]?.content?.parts?.[0]?.text || '';\n  \n  // Try to parse JSON from response\n  const jsonMatch = responseText.match(/\\[.*\\]/s);\n  if (jsonMatch) {\n    companies = JSON.parse(jsonMatch[0]);\n    console.log(`Gemini extracted ${companies.length} companies`);\n  } else {\n    console.log('No JSON array found in Gemini response');\n  }\n} catch (err) {\n  console.log(`Error parsing Gemini response: ${err.message}`);\n}\n\nconsole.log(`Gemini usage: ${staticData.apiUsage.gemini.used_today}/${staticData.apiUsage.gemini.limit_daily}`);\n\nreturn [{ json: { companies } }];"
+      },
+      "id": "parse-gemini",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// COLLECT COMPANIES - Accumulate discovered companies\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\nconst companies = input.companies || [];\n\n// Initialize collection\nif (!staticData.discoveredCompanies) {\n  staticData.discoveredCompanies = [];\n}\n\nfor (const company of companies) {\n  if (company.company) {\n    staticData.discoveredCompanies.push({\n      ...company,\n      discovered_at: new Date().toISOString(),\n      discovery_source: 'tavily'\n    });\n  }\n}\n\nconsole.log(`Collected ${companies.length} companies. Total: ${staticData.discoveredCompanies.length}`);\n\nreturn [{ json: { collected: staticData.discoveredCompanies.length } }];"
+      },
+      "id": "collect-companies",
+      "name": "Collect Companies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// DEDUPLICATE AND STORE COMPANIES\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst discovered = staticData.discoveredCompanies || [];\n\n// Clear temporary collection\nstaticData.discoveredCompanies = [];\n\n// Initialize persistent company list\nif (!staticData.companyList) {\n  staticData.companyList = [];\n}\n\n// Create lookup for existing companies\nconst existingCompanies = new Set(\n  staticData.companyList.map(c => c.company.toLowerCase().trim())\n);\n\n// Deduplicate and add new companies\nlet newCount = 0;\nfor (const company of discovered) {\n  const normalizedName = company.company.toLowerCase().trim();\n  \n  if (!existingCompanies.has(normalizedName)) {\n    existingCompanies.add(normalizedName);\n    staticData.companyList.push({\n      company: company.company.trim(),\n      ats: company.ats || null,\n      board: company.board || null,\n      careers_url: company.careers_url || null,\n      category: company.category || 'Unknown',\n      discovered_at: company.discovered_at,\n      discovery_source: company.discovery_source,\n      enabled: true,\n      last_scraped: null\n    });\n    newCount++;\n  }\n}\n\nconsole.log(`Added ${newCount} new companies. Total companies: ${staticData.companyList.length}`);\n\nreturn [{ json: { \n  newCompanies: newCount, \n  totalCompanies: staticData.companyList.length,\n  companies: staticData.companyList\n} }];"
+      },
+      "id": "dedupe-store",
+      "name": "Deduplicate & Store",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-new",
+              "leftValue": "={{ $json.newCompanies }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-new-companies",
+      "name": "Has New Companies?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3080, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// FORMAT NOTIFICATION - New companies discovered\n// =============================================================================\nconst input = $input.first().json;\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nif (!enableNotifications) {\n  console.log('Notifications disabled - skipping Telegram message');\n  return [];\n}\n\nconst message = `*Company Discovery Report*\n\nNew companies found: ${input.newCompanies}\nTotal companies tracked: ${input.totalCompanies}\n\nTimestamp: ${new Date().toISOString()}`;\n\nreturn [{ json: { text: message.replace(/\\./g, '\\\\.') } }];"
+      },
+      "id": "format-notification",
+      "name": "Format Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 200]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3520, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log completion when no new companies\nconst input = $input.first().json;\nconsole.log('='.repeat(60));\nconsole.log('Company Discovery Complete');\nconsole.log(`Total companies tracked: ${input.totalCompanies}`);\nconsole.log('No new companies discovered this run');\nconsole.log('='.repeat(60));\n\nreturn [{ json: { status: 'completed', newCompanies: 0 } }];"
+      },
+      "id": "log-no-new",
+      "name": "Log No New Companies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log completion\nconsole.log('Company Discovery workflow completed successfully');\nreturn $input.all();"
+      },
+      "id": "log-complete",
+      "name": "Log Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3740, 200]
+    }
+  ],
+  "connections": {
+    "Weekly Trigger (Sunday 2 AM)": {
+      "main": [
+        [
+          {
+            "node": "Check Kill Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Kill Switch": {
+      "main": [
+        [
+          {
+            "node": "Load Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Iterate Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iterate Queries": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Deduplicate & Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Wait": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Track Tavily Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Tavily Usage": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Prompt": {
+      "main": [
+        [
+          {
+            "node": "Has Results?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Results?": {
+      "main": [
+        [
+          {
+            "node": "Gemini Extract Companies",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Extract Companies": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Collect Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Companies": {
+      "main": [
+        [
+          {
+            "node": "Iterate Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate & Store": {
+      "main": [
+        [
+          {
+            "node": "Has New Companies?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Companies?": {
+      "main": [
+        [
+          {
+            "node": "Format Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No New Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Notification": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Telegram": {
+      "main": [
+        [
+          {
+            "node": "Log Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "timezone": "UTC"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "company-discovery"
+    },
+    {
+      "name": "weekly"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}

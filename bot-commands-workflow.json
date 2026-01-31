@@ -1,0 +1,317 @@
+{
+  "name": "Bot Commands Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "webhookId": "bot-commands-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// PARSE COMMAND - Extract command from message\n// =============================================================================\nconst message = $input.first().json.message;\nconst text = message?.text || '';\nconst chatId = message?.chat?.id?.toString() || '';\n\n// Only process messages from authorized chat\nconst authorizedChatId = $env.TELEGRAM_CHAT_ID;\nif (chatId !== authorizedChatId) {\n  console.log(`Unauthorized chat: ${chatId}`);\n  return [];\n}\n\n// Extract command\nlet command = '';\nif (text.startsWith('/')) {\n  command = text.split(' ')[0].toLowerCase().replace('/', '');\n}\n\nconsole.log(`Received command: ${command}`);\n\nreturn [{ json: { command, chatId, text } }];"
+      },
+      "id": "parse-command",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "usage",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "usage"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "pause",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pause"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "resume",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "resume"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "status"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "route-command",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// USAGE COMMAND - Show API usage dashboard\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Get API usage data\nconst apiUsage = staticData.apiUsage || {\n  jsearch: { used_this_month: 0, limit: 500 },\n  serpapi: { used_this_month: 0, limit: 100 },\n  tavily: { used_this_month: 0, limit: 1000 },\n  gemini: { used_today: 0, limit_daily: 1000 }\n};\n\n// Get run stats\nconst runStats = staticData.runStats || {\n  jobsLast24h: 0,\n  lastHeartbeat: null\n};\n\n// Calculate percentages\nfunction pct(used, limit) {\n  return ((used / limit) * 100).toFixed(1);\n}\n\nfunction bar(used, limit) {\n  const pctVal = (used / limit) * 100;\n  const filled = Math.round(pctVal / 5);\n  return '█'.repeat(Math.min(filled, 20)) + '░'.repeat(Math.max(20 - filled, 0));\n}\n\nfunction status(used, limit, exhausted) {\n  if (exhausted) return '❌ EXHAUSTED';\n  if (used >= limit * 0.9) return '⚠️ WARNING';\n  return '✅ ACTIVE';\n}\n\nconst now = new Date();\nconst message = `📊 *API Usage Dashboard*\nUpdated: ${now.toISOString().replace(/\\./g, '\\\\.')}\n\n*JSearch* \\\\(Job Aggregator \\\\- Primary\\\\)\n${bar(apiUsage.jsearch?.used_this_month || 0, 500)} ${apiUsage.jsearch?.used_this_month || 0}/500 \\\\(${pct(apiUsage.jsearch?.used_this_month || 0, 500)}%\\\\)\nStatus: ${status(apiUsage.jsearch?.used_this_month || 0, 500, apiUsage.jsearch?.is_exhausted)}\n\n*SerpApi* \\\\(Backup\\\\)\n${bar(apiUsage.serpapi?.used_this_month || 0, 100)} ${apiUsage.serpapi?.used_this_month || 0}/100 \\\\(${pct(apiUsage.serpapi?.used_this_month || 0, 100)}%\\\\)\nStatus: ${status(apiUsage.serpapi?.used_this_month || 0, 100, apiUsage.serpapi?.is_exhausted)}\n\n*Tavily* \\\\(Company Discovery\\\\)\n${bar(apiUsage.tavily?.used_this_month || 0, 1000)} ${apiUsage.tavily?.used_this_month || 0}/1000 \\\\(${pct(apiUsage.tavily?.used_this_month || 0, 1000)}%\\\\)\n\n*Gemini* \\\\(Extraction\\\\)\n${bar(apiUsage.gemini?.used_today || 0, 1000)} ${apiUsage.gemini?.used_today || 0}/1000 today\n\n*Direct ATS Scraping*\nCompanies tracked: ${staticData.sources?.length || 0}\nStatus: ✅ UNLIMITED\n\n*Stats \\\\(Last 24h\\\\)*\nJobs discovered: ${runStats.jobsLast24h || 0}`;\n\nreturn [{ json: { text: message, chatId: input.chatId } }];"
+      },
+      "id": "handle-usage",
+      "name": "Handle /usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// PAUSE COMMAND - Disable notifications\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Set pause flag\nstaticData.notificationsPaused = true;\nstaticData.pausedAt = new Date().toISOString();\n\nconst message = `⏸ *Notifications Paused*\n\nJob alerts are now disabled\\\\.\nScraping continues in the background\\\\.\n\nUse /resume to re\\\\-enable notifications\\\\.`;\n\nreturn [{ json: { text: message, chatId: input.chatId } }];"
+      },
+      "id": "handle-pause",
+      "name": "Handle /pause",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 250]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// RESUME COMMAND - Enable notifications\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Clear pause flag\nstaticData.notificationsPaused = false;\nstaticData.resumedAt = new Date().toISOString();\n\nconst message = `▶️ *Notifications Resumed*\n\nJob alerts are now enabled\\\\.\nYou will receive new job notifications\\\\.`;\n\nreturn [{ json: { text: message, chatId: input.chatId } }];"
+      },
+      "id": "handle-resume",
+      "name": "Handle /resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// STATUS COMMAND - Show current system status\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst input = $input.first().json;\n\n// Get current states\nconst notificationsPaused = staticData.notificationsPaused || false;\nconst enableCompanyDiscovery = $env.ENABLE_COMPANY_DISCOVERY !== 'false';\nconst enableAggregators = $env.ENABLE_AGGREGATOR_APIS !== 'false';\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nconst statusIcon = (enabled) => enabled ? '✅' : '❌';\n\nconst message = `📊 *System Status*\n\n*Kill Switches \\\\(Environment\\\\)*\nCompany Discovery: ${statusIcon(enableCompanyDiscovery)} ${enableCompanyDiscovery ? 'ENABLED' : 'DISABLED'}\nAggregator APIs: ${statusIcon(enableAggregators)} ${enableAggregators ? 'ENABLED' : 'DISABLED'}\nNotifications: ${statusIcon(enableNotifications)} ${enableNotifications ? 'ENABLED' : 'DISABLED'}\n\n*Runtime State*\nNotifications Paused: ${statusIcon(!notificationsPaused)} ${notificationsPaused ? 'PAUSED \\\\(via /pause\\\\)' : 'ACTIVE'}\n\n*Last Activity*\nLast run: ${staticData.lastRunTime ? staticData.lastRunTime.replace(/\\./g, '\\\\.') : 'Never'}\nFilter version: ${staticData.filterVersion || 'v1\\\\.0'}\n\n*Commands*\n/pause \\\\- Pause notifications\n/resume \\\\- Resume notifications\n/usage \\\\- Show API usage\n/status \\\\- This message`;\n\nreturn [{ json: { text: message, chatId: input.chatId } }];"
+      },
+      "id": "handle-status",
+      "name": "Handle /status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 550]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [880, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Command": {
+      "main": [
+        [
+          {
+            "node": "Handle /usage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle /pause",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle /resume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle /status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle /usage": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle /pause": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle /resume": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle /status": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "timezone": "UTC"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "bot-commands"
+    },
+    {
+      "name": "telegram"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}

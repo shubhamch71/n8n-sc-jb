@@ -1,0 +1,206 @@
+{
+  "name": "Health Monitor (Daily Heartbeat)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Daily Trigger (8 AM UTC)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// HEALTH CHECK - Collect system health metrics\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst now = new Date();\nconst twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n\n// Get run stats\nconst runStats = staticData.runStats || {\n  jobsLast24h: 0,\n  lastHeartbeat: null\n};\n\n// Get API usage\nconst apiUsage = staticData.apiUsage || {};\n\n// Determine active APIs\nconst activeApis = [];\nif (!apiUsage.jsearch?.is_exhausted) activeApis.push('JSearch');\nif (!apiUsage.serpapi?.is_exhausted) activeApis.push('SerpApi');\nactiveApis.push('Direct ATS'); // Always active\n\n// Check last run time\nconst lastRunTime = staticData.lastRunTime ? new Date(staticData.lastRunTime) : null;\nconst hasRecentActivity = lastRunTime && lastRunTime > twentyFourHoursAgo;\n\n// Check if we need to send alert (no jobs AND no recent activity)\nconst jobsLast24h = runStats.jobsLast24h || 0;\nconst needsAlert = !hasRecentActivity || (jobsLast24h === 0 && !hasRecentActivity);\n\n// Prepare health status\nconst health = {\n  isHealthy: !needsAlert,\n  jobsLast24h: jobsLast24h,\n  activeApis: activeApis,\n  lastRunTime: lastRunTime?.toISOString() || 'Never',\n  companiesTracked: staticData.sources?.length || 0,\n  filterVersion: staticData.filterVersion || 'v1.0'\n};\n\n// Update heartbeat\nrunStats.lastHeartbeat = now.toISOString();\n// Reset daily counter\nrunStats.jobsLast24h = 0;\nstaticData.runStats = runStats;\n\nconsole.log(`Health check: ${health.isHealthy ? 'HEALTHY' : 'ALERT'}`);\nconsole.log(`Jobs last 24h: ${health.jobsLast24h}`);\nconsole.log(`Active APIs: ${health.activeApis.join(', ')}`);\n\nreturn [{ json: health }];"
+      },
+      "id": "health-check",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-healthy",
+              "leftValue": "={{ $json.isHealthy }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-health",
+      "name": "Is Healthy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// FORMAT HEALTHY MESSAGE\n// =============================================================================\nconst health = $input.first().json;\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nif (!enableNotifications) {\n  console.log('Notifications disabled - skipping heartbeat');\n  return [];\n}\n\nconst message = `💚 *System Healthy*\n\n*Last 24 Hours*\nJobs discovered: ${health.jobsLast24h}\nCompanies tracked: ${health.companiesTracked}\n\n*Active APIs*\n${health.activeApis.map(api => `• ${api}`).join('\\n')}\n\n*System Info*\nFilter version: ${health.filterVersion.replace(/\\./g, '\\\\.')}\nLast run: ${health.lastRunTime.replace(/\\./g, '\\\\.')}\n\n_Heartbeat sent at ${new Date().toISOString().replace(/\\./g, '\\\\.')}_`;\n\nreturn [{ json: { text: message } }];"
+      },
+      "id": "format-healthy",
+      "name": "Format Healthy Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// FORMAT ALERT MESSAGE\n// =============================================================================\nconst health = $input.first().json;\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nif (!enableNotifications) {\n  console.log('Notifications disabled - skipping alert');\n  return [];\n}\n\nconst message = `⚠️ *Job System Inactive*\n\n*Warning:* No job activity detected in the last 24 hours\\\\.\n\n*Status*\nJobs discovered: ${health.jobsLast24h}\nLast run: ${health.lastRunTime.replace(/\\./g, '\\\\.')}\n\n*Possible Issues*\n• Workflow may be disabled\n• API credentials may have expired\n• Rate limits may have been hit\n\nPlease check the n8n dashboard\\\\.`;\n\nreturn [{ json: { text: message } }];"
+      },
+      "id": "format-alert",
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [880, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log completion\nconsole.log('Health monitor heartbeat sent');\nreturn $input.all();"
+      },
+      "id": "log-complete",
+      "name": "Log Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Daily Trigger (8 AM UTC)": {
+      "main": [
+        [
+          {
+            "node": "Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Is Healthy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Healthy?": {
+      "main": [
+        [
+          {
+            "node": "Format Healthy Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Healthy Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Telegram": {
+      "main": [
+        [
+          {
+            "node": "Log Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "timezone": "UTC"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "health-monitor"
+    },
+    {
+      "name": "daily"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}
