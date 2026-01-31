@@ -1,10 +1,10 @@
 {
   "$schema": "./sources-schema.json",
-  "description": "Job sources configuration - edit this file to add/remove sources WITHOUT modifying workflow nodes",
-  "version": "1.0.0",
-  "lastUpdated": "2026-01-31",
+  "description": "Job sources configuration - Single source of truth for all company data",
+  "version": "2.0",
+  "lastUpdated": "2026-01-31T00:00:00Z",
 
-  "sources": [
+  "manual": [
     {
       "ats": "greenhouse",
       "board": "hashicorp",
@@ -210,6 +210,8 @@
     }
   ],
 
+  "discovered": [],
+
   "ats_endpoints": {
     "greenhouse": {
       "urlTemplate": "https://boards-api.greenhouse.io/v1/boards/{board}/jobs",
@@ -247,7 +249,7 @@
     "step1": "Find the company's career page",
     "step2": "Identify the ATS they use (check URL patterns below)",
     "step3": "Find the board/company identifier",
-    "step4": "Add a new entry to the 'sources' array above",
+    "step4": "Add a new entry to the 'manual' array above",
     "urlPatterns": {
       "greenhouse": "boards.greenhouse.io/{board} or jobs.greenhouse.io/{board}",
       "lever": "jobs.lever.co/{board}",

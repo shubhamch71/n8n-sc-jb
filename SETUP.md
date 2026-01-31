@@ -23,6 +23,21 @@ Edit `.env` with your values:
 | `TELEGRAM_CHAT_ID` | Your chat/group ID | Message @userinfobot |
 | `N8N_BASIC_AUTH_PASSWORD` | n8n login password | Choose a secure password |
 
+### GitHub (Single Source of Truth)
+| Variable | Description | How to Get |
+|----------|-------------|------------|
+| `GH_PAT` | GitHub Personal Access Token | GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens |
+| `GITHUB_REPO_OWNER` | Your GitHub username | Your username |
+| `GITHUB_REPO_NAME` | Repository name | `n8n` |
+| `SOURCES_JSON_URL` | Optional direct URL | `https://raw.githubusercontent.com/USER/n8n/main/sources.json` |
+
+**Creating GH_PAT:**
+1. Go to GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens
+2. Click "Generate new token"
+3. Repository access: Select only your n8n repository
+4. Permissions: Contents → Read and Write
+5. Generate and copy the token
+
 ### Optional (Enhanced Features)
 | Variable | Description | Free Tier |
 |----------|-------------|-----------|
@@ -105,6 +120,15 @@ fly secrets set \
   --app n8n-job-alerts
 ```
 
+GitHub secrets (required for company discovery to persist):
+```bash
+fly secrets set \
+  GH_PAT="ghp_your_token" \
+  GITHUB_REPO_OWNER="your-username" \
+  GITHUB_REPO_NAME="n8n" \
+  --app n8n-job-alerts
+```
+
 Optional secrets:
 ```bash
 fly secrets set \
@@ -150,6 +174,14 @@ Go to: **Repository → Settings → Secrets and variables → Actions**
 | `N8N_BASIC_AUTH_USER` | n8n username | Choose (e.g., `admin`) |
 | `N8N_BASIC_AUTH_PASSWORD` | n8n password | Choose secure password |
 
+**GitHub Secrets (for sources.json persistence):**
+
+| Secret | Description |
+|--------|-------------|
+| `GH_PAT` | GitHub Personal Access Token (Contents: Read/Write) |
+| `GITHUB_REPO_OWNER` | Your GitHub username |
+| `GITHUB_REPO_NAME` | Repository name (`n8n`) |
+
 **Optional Secrets:**
 
 | Secret | Description |
@@ -190,14 +222,18 @@ To update Fly.io secrets from GitHub:
 
 ## 6. Add/Remove Companies
 
-### Option A: Edit source list in n8n
-1. Open `job-alerts-workflow.json`
-2. Find the `Load Source Configuration` node
-3. Edit the `sources` array
+### Option A: Edit sources.json directly (Recommended)
+1. Open `sources.json` in GitHub or locally
+2. Add to the `manual` array:
+   ```json
+   { "ats": "greenhouse", "board": "company-slug", "company": "Company Name", "enabled": true }
+   ```
+3. Commit and push to main branch
+4. Job Discovery will pick up changes on next run
 
 ### Option B: Auto-discovery
-Enable company discovery by providing `TAVILY_API_KEY` and `GEMINI_API_KEY`.
-New companies are automatically added weekly.
+Enable company discovery by providing `TAVILY_API_KEY`, `GEMINI_API_KEY`, and `GH_PAT`.
+New companies are automatically discovered weekly and committed to `sources.json`.
 
 ### Supported ATS Types
 | ATS | URL Pattern |
@@ -210,11 +246,25 @@ New companies are automatically added weekly.
 | `remoteok` | Uses tags: devops, cloud, sre, kubernetes |
 
 ### Adding a Company
-```javascript
-{ ats: 'greenhouse', board: 'company-slug', company: 'Company Name', enabled: true }
+
+Add to the `manual` array in `sources.json`:
+```json
+{ "ats": "greenhouse", "board": "company-slug", "company": "Company Name", "enabled": true }
 ```
 
 Find the board slug from the company's careers page URL.
+
+### sources.json Structure
+```json
+{
+  "version": "2.0",
+  "lastUpdated": "2026-01-31T00:00:00Z",
+  "manual": [
+    { "ats": "greenhouse", "board": "hashicorp", "company": "HashiCorp", "enabled": true }
+  ],
+  "discovered": []
+}
+```
 
 ## 7. Telegram Commands
 

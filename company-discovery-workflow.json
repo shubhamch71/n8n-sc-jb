@@ -188,13 +188,24 @@
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// DEDUPLICATE AND STORE COMPANIES\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst discovered = staticData.discoveredCompanies || [];\n\n// Clear temporary collection\nstaticData.discoveredCompanies = [];\n\n// Initialize persistent company list\nif (!staticData.companyList) {\n  staticData.companyList = [];\n}\n\n// Create lookup for existing companies\nconst existingCompanies = new Set(\n  staticData.companyList.map(c => c.company.toLowerCase().trim())\n);\n\n// Deduplicate and add new companies\nlet newCount = 0;\nfor (const company of discovered) {\n  const normalizedName = company.company.toLowerCase().trim();\n  \n  if (!existingCompanies.has(normalizedName)) {\n    existingCompanies.add(normalizedName);\n    staticData.companyList.push({\n      company: company.company.trim(),\n      ats: company.ats || null,\n      board: company.board || null,\n      careers_url: company.careers_url || null,\n      category: company.category || 'Unknown',\n      discovered_at: company.discovered_at,\n      discovery_source: company.discovery_source,\n      enabled: true,\n      last_scraped: null\n    });\n    newCount++;\n  }\n}\n\nconsole.log(`Added ${newCount} new companies. Total companies: ${staticData.companyList.length}`);\n\nreturn [{ json: { \n  newCompanies: newCount, \n  totalCompanies: staticData.companyList.length,\n  companies: staticData.companyList\n} }];"
+        "jsCode": "// =============================================================================\n// DEDUPLICATE AND PREPARE FOR GITHUB COMMIT\n// =============================================================================\nconst staticData = $getWorkflowStaticData('global');\nconst discovered = staticData.discoveredCompanies || [];\n\n// Clear temporary collection\nstaticData.discoveredCompanies = [];\n\nif (discovered.length === 0) {\n  console.log('No companies discovered this run');\n  return [{ json: { newCompanies: 0, totalCompanies: 0, skipGitHub: true } }];\n}\n\n// Fetch current sources.json from GitHub API\nconst repoOwner = $env.GITHUB_REPO_OWNER || 'your-username';\nconst repoName = $env.GITHUB_REPO_NAME || 'n8n';\nconst ghPat = $env.GH_PAT;\n\nif (!ghPat) {\n  console.error('GH_PAT environment variable not set - cannot commit to GitHub');\n  return [{ json: { newCompanies: 0, error: 'GH_PAT not configured', skipGitHub: true } }];\n}\n\nlet currentContent, currentSha;\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api.github.com/repos/${repoOwner}/${repoName}/contents/sources.json`,\n    headers: {\n      'Authorization': `Bearer ${ghPat}`,\n      'Accept': 'application/vnd.github.v3+json',\n      'User-Agent': 'n8n-company-discovery'\n    },\n    json: true\n  });\n  currentSha = response.sha;\n  currentContent = JSON.parse(Buffer.from(response.content, 'base64').toString());\n  console.log(`Fetched sources.json (sha: ${currentSha.substring(0, 7)})`);\n} catch (err) {\n  console.error(`Failed to fetch sources.json from GitHub: ${err.message}`);\n  return [{ json: { newCompanies: 0, error: err.message, skipGitHub: true } }];\n}\n\n// Create lookup for existing companies (both manual and discovered)\nconst existingCompanies = new Set();\nfor (const c of (currentContent.manual || [])) {\n  existingCompanies.add(c.company.toLowerCase().trim());\n  if (c.board) existingCompanies.add(c.board.toLowerCase());\n}\nfor (const c of (currentContent.discovered || [])) {\n  existingCompanies.add(c.company.toLowerCase().trim());\n  if (c.board) existingCompanies.add(c.board.toLowerCase());\n}\n\n// Filter and prepare new companies\nconst newCompanies = [];\nfor (const company of discovered) {\n  const normalizedName = company.company.toLowerCase().trim();\n  const normalizedBoard = company.board?.toLowerCase();\n  \n  // Skip if company name or board already exists\n  if (existingCompanies.has(normalizedName)) continue;\n  if (normalizedBoard && existingCompanies.has(normalizedBoard)) continue;\n  \n  existingCompanies.add(normalizedName);\n  if (normalizedBoard) existingCompanies.add(normalizedBoard);\n  \n  newCompanies.push({\n    ats: company.ats || null,\n    board: company.board || null,\n    company: company.company.trim(),\n    enabled: true,\n    category: company.category || 'Unknown',\n    discovered_at: new Date().toISOString().split('T')[0],\n    careers_url: company.careers_url || null\n  });\n}\n\nif (newCompanies.length === 0) {\n  console.log('All discovered companies already exist in sources.json');\n  return [{ json: { newCompanies: 0, totalCompanies: currentContent.discovered?.length || 0, skipGitHub: true } }];\n}\n\n// Append new companies to discovered array\ncurrentContent.discovered = currentContent.discovered || [];\ncurrentContent.discovered.push(...newCompanies);\ncurrentContent.lastUpdated = new Date().toISOString();\n\nconsole.log(`Prepared ${newCompanies.length} new companies for GitHub commit`);\n\nreturn [{ json: { \n  newCompanies: newCompanies.length, \n  totalCompanies: currentContent.discovered.length,\n  updatedContent: currentContent,\n  currentSha: currentSha,\n  repoOwner: repoOwner,\n  repoName: repoName,\n  skipGitHub: false\n} }];"
       },
       "id": "dedupe-store",
       "name": "Deduplicate & Store",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2860, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// COMMIT TO GITHUB - Push new companies to sources.json\n// =============================================================================\nconst input = $input.first().json;\n\n// Skip if no GitHub commit needed\nif (input.skipGitHub) {\n  console.log('Skipping GitHub commit');\n  return [{ json: { newCompanies: input.newCompanies || 0, totalCompanies: input.totalCompanies || 0, committed: false } }];\n}\n\nconst ghPat = $env.GH_PAT;\nconst repoOwner = input.repoOwner;\nconst repoName = input.repoName;\nconst currentSha = input.currentSha;\nconst updatedContent = input.updatedContent;\n\ntry {\n  // Commit updated sources.json to GitHub\n  const newContent = Buffer.from(JSON.stringify(updatedContent, null, 2)).toString('base64');\n  \n  await this.helpers.httpRequest({\n    method: 'PUT',\n    url: `https://api.github.com/repos/${repoOwner}/${repoName}/contents/sources.json`,\n    headers: {\n      'Authorization': `Bearer ${ghPat}`,\n      'Accept': 'application/vnd.github.v3+json',\n      'User-Agent': 'n8n-company-discovery',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      message: `chore: add ${input.newCompanies} discovered companies`,\n      content: newContent,\n      sha: currentSha\n    },\n    json: true\n  });\n  \n  console.log(`Successfully committed ${input.newCompanies} new companies to GitHub`);\n  return [{ json: { newCompanies: input.newCompanies, totalCompanies: input.totalCompanies, committed: true } }];\n} catch (err) {\n  console.error(`Failed to commit to GitHub: ${err.message}`);\n  return [{ json: { newCompanies: input.newCompanies, totalCompanies: input.totalCompanies, committed: false, error: err.message } }];\n}"
+      },
+      "id": "commit-to-github",
+      "name": "Commit to GitHub",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3080, 300],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -223,17 +234,17 @@
       "name": "Has New Companies?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3080, 300]
+      "position": [3300, 300]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// FORMAT NOTIFICATION - New companies discovered\n// =============================================================================\nconst input = $input.first().json;\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nif (!enableNotifications) {\n  console.log('Notifications disabled - skipping Telegram message');\n  return [];\n}\n\nconst message = `*Company Discovery Report*\n\nNew companies found: ${input.newCompanies}\nTotal companies tracked: ${input.totalCompanies}\n\nTimestamp: ${new Date().toISOString()}`;\n\nreturn [{ json: { text: message.replace(/\\./g, '\\\\.') } }];"
+        "jsCode": "// =============================================================================\n// FORMAT NOTIFICATION - New companies discovered\n// =============================================================================\nconst input = $input.first().json;\nconst enableNotifications = $env.ENABLE_NOTIFICATIONS !== 'false';\n\nif (!enableNotifications) {\n  console.log('Notifications disabled - skipping Telegram message');\n  return [];\n}\n\nconst commitStatus = input.committed ? 'Committed to GitHub' : (input.error ? `GitHub Error: ${input.error}` : 'Not committed');\n\nconst message = `*Company Discovery Report*\n\nNew companies found: ${input.newCompanies}\nTotal discovered companies: ${input.totalCompanies}\nStatus: ${commitStatus}\n\nTimestamp: ${new Date().toISOString()}`;\n\nreturn [{ json: { text: message.replace(/\\./g, '\\\\.').replace(/\\-/g, '\\\\-') } }];"
       },
       "id": "format-notification",
       "name": "Format Notification",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, 200]
+      "position": [3520, 200]
     },
     {
       "parameters": {
@@ -249,7 +260,7 @@
       "name": "Send to Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [3520, 200],
+      "position": [3740, 200],
       "credentials": {
         "telegramApi": {
           "id": "telegram-bot-cred",
@@ -266,7 +277,7 @@
       "name": "Log No New Companies",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, 400]
+      "position": [3520, 400]
     },
     {
       "parameters": {
@@ -276,7 +287,7 @@
       "name": "Log Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3740, 200]
+      "position": [3960, 200]
     }
   ],
   "connections": {
@@ -427,6 +438,17 @@
       ]
     },
     "Deduplicate & Store": {
+      "main": [
+        [
+          {
+            "node": "Commit to GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commit to GitHub": {
       "main": [
         [
           {

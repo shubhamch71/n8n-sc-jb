@@ -13,13 +13,13 @@ This system implements a 4-layer approach to discover entry-level DevOps/MLOps/P
 │   ║  WORKFLOW 1: COMPANY DISCOVERY (Weekly - Sunday 2 AM)                     ║ │
 │   ║                                                                            ║ │
 │   ║  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────────┐   ║ │
-│   ║  │   Tavily    │───▶│   Gemini    │───▶│  Company List (Static Data) │   ║ │
+│   ║  │   Tavily    │───▶│   Gemini    │───▶│  sources.json (GitHub)      │   ║ │
 │   ║  │  (Search)   │    │  (Extract)  │    │                              │   ║ │
-│   ║  │             │    │             │    │  { company, ats, board }     │   ║ │
-│   ║  │ "DevOps     │    │ Extract:    │    │  { company, ats, board }     │   ║ │
-│   ║  │  startups"  │    │ - Name      │    │  { company, ats, board }     │   ║ │
-│   ║  │             │    │ - Career URL│    │         ...                  │   ║ │
-│   ║  │ "MLOps      │    │ - ATS type  │    │  (grows over time)           │   ║ │
+│   ║  │             │    │             │    │  { manual: [...] }           │   ║ │
+│   ║  │ "DevOps     │    │ Extract:    │    │  { discovered: [...] }       │   ║ │
+│   ║  │  startups"  │    │ - Name      │    │                              │   ║ │
+│   ║  │             │    │ - Career URL│    │  Commits new companies       │   ║ │
+│   ║  │ "MLOps      │    │ - ATS type  │    │  via GitHub API              │   ║ │
 │   ║  │  companies" │    │             │    │                              │   ║ │
 │   ║  └─────────────┘    └─────────────┘    └─────────────────────────────┘   ║ │
 │   ║                                                                            ║ │
@@ -331,6 +331,50 @@ System automatically sends alerts when:
 
 ## Data Models
 
+### sources.json Structure (Single Source of Truth)
+
+The `sources.json` file in GitHub is the single source of truth for all company data.
+This ensures companies are never lost even if the Fly.io volume is deleted.
+
+```javascript
+{
+  "version": "2.0",
+  "lastUpdated": "2026-01-31T00:00:00Z",
+
+  // Manually added companies (edit directly in GitHub)
+  "manual": [
+    { "ats": "greenhouse", "board": "hashicorp", "company": "HashiCorp", "enabled": true },
+    { "ats": "lever", "board": "figma", "company": "Figma", "enabled": true }
+  ],
+
+  // Auto-discovered companies (added by Company Discovery workflow)
+  "discovered": [
+    { "ats": "lever", "board": "modal", "company": "Modal", "discovered_at": "2026-01-31", "category": "AI Infrastructure", "enabled": true }
+  ]
+}
+```
+
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        sources.json                              │
+│                      (GitHub - main branch)                      │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ { "manual": [...], "discovered": [...] }                │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│            │                               ▲                     │
+│            │ (fetch raw URL)               │ (commit via API)   │
+│            │ (no auth needed)              │ (needs GH_PAT)     │
+│            ▼                               │                     │
+│  ┌──────────────────┐           ┌──────────────────┐            │
+│  │ Job Discovery    │           │ Company Discovery │            │
+│  │ (every 2 hours)  │           │ (weekly)          │            │
+│  │ READS sources    │           │ WRITES sources    │            │
+│  └──────────────────┘           └──────────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### Company Entry (Discovered)
 
 ```javascript
@@ -340,10 +384,8 @@ System automatically sends alerts when:
   board: "modal",                  // identifier for ATS URL
   careers_url: "https://modal.com/careers",
   category: "AI Infrastructure",  // DevOps | MLOps | Platform | Cloud Native | AI Infra
-  discovered_at: "2026-01-31T00:00:00Z",
-  discovery_source: "tavily",     // tavily | manual | aggregator
-  enabled: true,
-  last_scraped: "2026-01-31T12:00:00Z"
+  discovered_at: "2026-01-31",
+  enabled: true
 }
 ```
 
@@ -551,6 +593,12 @@ const searchQueries = [
 # Telegram
 TELEGRAM_BOT_TOKEN=your-bot-token
 TELEGRAM_CHAT_ID=your-chat-id
+
+# GitHub (for sources.json Single Source of Truth)
+GH_PAT=ghp_your_personal_access_token     # Required for committing discovered companies
+GITHUB_REPO_OWNER=your-github-username
+GITHUB_REPO_NAME=n8n
+SOURCES_JSON_URL=https://raw.githubusercontent.com/user/n8n/main/sources.json  # Optional
 
 # Tavily (Company Discovery)
 TAVILY_API_KEY=your-tavily-key
