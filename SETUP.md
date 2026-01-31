@@ -71,7 +71,7 @@ Access at: http://localhost:5678
    - Name it exactly: `Telegram Bot`
    - Paste your bot token
 
-## 4. Fly.io Deployment
+## 4. Fly.io Deployment (Manual)
 
 ```bash
 # Login
@@ -89,7 +89,75 @@ fly secrets set TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=xxx ...
 make deploy
 ```
 
-## 5. Add/Remove Companies
+## 5. CI/CD Deployment (GitHub Actions)
+
+Automatic deployment on push to `main`:
+
+```
+git push main → GitHub Actions → fly deploy → Fly.io
+```
+
+### Step 1: Get Fly.io API Token
+
+```bash
+fly auth login
+fly tokens create deploy -x 999999h
+# Copy the token output
+```
+
+### Step 2: Configure GitHub Secrets
+
+Go to: **Repository → Settings → Secrets and variables → Actions**
+
+**Required Secrets:**
+
+| Secret | Description | How to Get |
+|--------|-------------|------------|
+| `FLY_API_TOKEN` | Fly.io deploy token | Step 1 above |
+| `TELEGRAM_BOT_TOKEN` | Bot API token | @BotFather |
+| `TELEGRAM_CHAT_ID` | Chat/group ID | @userinfobot |
+| `N8N_BASIC_AUTH_USER` | n8n username | Choose (e.g., `admin`) |
+| `N8N_BASIC_AUTH_PASSWORD` | n8n password | Choose secure password |
+
+**Optional Secrets:**
+
+| Secret | Description |
+|--------|-------------|
+| `TAVILY_API_KEY` | Company discovery API |
+| `GEMINI_API_KEY` | AI extraction |
+| `RAPIDAPI_KEY` | JSearch aggregator |
+| `SERPAPI_KEY` | Backup search |
+
+### Step 3: Configure GitHub Variables
+
+Go to: **Repository → Settings → Secrets and variables → Actions → Variables**
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `ENABLE_COMPANY_DISCOVERY` | `true` | Enable company discovery |
+| `ENABLE_AGGREGATOR_APIS` | `true` | Enable JSearch/SerpApi |
+| `ENABLE_NOTIFICATIONS` | `true` | Enable Telegram alerts |
+
+### Step 4: Deploy
+
+Push to main branch:
+```bash
+git add .
+git commit -m "Deploy"
+git push origin main
+```
+
+Check deployment: **Repository → Actions tab**
+
+### Manual Secret Sync
+
+To update Fly.io secrets from GitHub:
+1. Go to **Actions → "Sync Secrets to Fly.io"**
+2. Click **Run workflow**
+3. Type `sync` to confirm
+4. Click **Run workflow**
+
+## 6. Add/Remove Companies
 
 ### Option A: Edit source list in n8n
 1. Open `job-alerts-workflow.json`
@@ -117,7 +185,7 @@ New companies are automatically added weekly.
 
 Find the board slug from the company's careers page URL.
 
-## 6. Telegram Commands
+## 7. Telegram Commands
 
 | Command | Action |
 |---------|--------|
@@ -126,7 +194,7 @@ Find the board slug from the company's careers page URL.
 | `/resume` | Resume notifications |
 | `/status` | Show system status and kill switches |
 
-## 7. Workflow Schedules
+## 8. Workflow Schedules
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
